@@ -1,8 +1,13 @@
 'use strict';
 
+const fs = require("fs");
+const jwt = require('jsonwebtoken');
 const bcrypt = require("bcrypt");
 const Database = require("better-sqlite3");
+const { v4: uuidv4 } = require('uuid');
+
 const PASSWORD_HASH_SALT_ROUNDS = 10;
+const PRIVATE_JWT_RSA_KEY_PATH = 'data/jwtRS256.key';
 
 module.exports = class AuthenticationSystem
 {
@@ -10,13 +15,13 @@ module.exports = class AuthenticationSystem
     {
         if(options.verbose)
         {
-            this.log   = (text) => { console.log(text); };
-            this.error = (text) => { console.error(text); };
+            this.log = (text) => { console.log(text); };
+            this.error = (text) => { console.error(`\x1b[31m${text}\x1b[0m`); };
         }
         else
         {
-            this.log   = () => { };
-            this.error = () => { };
+            this.log = () => {};
+            this.error = () => {};
         }
         this.log("Launching authentication server...");
         this.initDatabase(db_location);
@@ -25,32 +30,38 @@ module.exports = class AuthenticationSystem
 
     initDatabase(db_location)
     {
-        try {
-            this.db = new Database(db_location, { verbose: this.log });
-        } catch(err) {
+        try
+        {
+            this.db = new Database(db_location, {verbose : this.log});
+        }
+        catch(err)
+        {
             this.error(err.message);
         }
 
         // Check that users table exists, if not, create it
-        const SQL_CREATE_USER_TABLE = 
+        const SQL_CREATE_USERS_TABLE = 
         `CREATE TABLE IF NOT EXISTS users (
-            userid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+            id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
             username VARCHAR(256) NOT NULL,
             password CHAR(60)
         )`;
 
-        try {
-            this.db.prepare(SQL_CREATE_USER_TABLE).run();
-        } catch(err) {
+        try
+        {
+            this.db.prepare(SQL_CREATE_USERS_TABLE).run();
+        }
+        catch(err)
+        {
             this.error(err.message);
         }
     }
 
-    createUser(user_name, password)
+    createUser(username, password)
     {
-        if(this.userExists(user_name))
+        if(this.userExists(username))
         {
-            this.error(`User ${user_name} already exists.`);
+            this.error(`User ${username} already exists.`);
             return new Promise(function(resolve) { resolve(undefined); });
         }
         else
@@ -58,10 +69,13 @@ module.exports = class AuthenticationSystem
             return bcrypt.hash(password, PASSWORD_HASH_SALT_ROUNDS)
                 .then(hash => {
                     const SQL_CREATE_USER = `INSERT INTO users (username, password) VALUES (?, ?)`;
-                    try {
+                    try
+                    {
                         const stmt = this.db.prepare(SQL_CREATE_USER);
-                        stmt.run(user_name, hash);
-                    } catch(err) {
+                        stmt.run(username, hash);
+                    }
+                    catch(err)
+                    {
                         this.error(err.message);
                     }
                 })
@@ -69,31 +83,74 @@ module.exports = class AuthenticationSystem
         }
     }
 
-    authenticateUser(user_name, password)
+    authenticateUser(username, password)
     {
         const SQL_GET_USER_BY_NAME = `SELECT * FROM users WHERE username = ?`;
-        try {
+        try
+        {
             const stmt = this.db.prepare(SQL_GET_USER_BY_NAME);
-            const result = stmt.get(user_name);
+            const result = stmt.get(username);
             if(result === undefined)
-                this.log(`Cannot authenticate unknown user: ${user_name}`);
+                this.log(`Cannot authenticate unknown user: ${username}`);
             else
                 return bcrypt.compare(password, result.password).catch(err => this.error(err.message));
-        } catch(err) {
+        }
+        catch(err)
+        {
             this.error(err.message);
         }
         return new Promise(function(resolve) { resolve(false); });
     }
 
-    userExists(user_name)
+    createAuthenticationToken(username, duration_s)
+    {
+        if(this.userExists(username))
+        {
+            // Signe a JSON web token using private key
+            const private_key = fs.readFileSync(PRIVATE_JWT_RSA_KEY_PATH);
+            const iat = Math.floor(Date.now() / 1000);
+            const expiration_date = iat + duration_s;
+            const payload = {logged_in_as : username, exp : expiration_date, iat : iat};
+            const token_id = uuidv4();
+            const token = jwt.sign(payload, private_key, {algorithm : 'RS256', jwtid : token_id});
+
+            // NOTE(ndx):
+            // We keep JWTs stateless and don't save claims in the database
+            // at the moment, because we don't support token revocation.
+
+            return token;
+        }
+        else
+            return undefined;
+    }
+
+    verifyAuthenticationToken(token)
+    {
+        const private_key = fs.readFileSync(PRIVATE_JWT_RSA_KEY_PATH);
+        try
+        {
+            const decoded = jwt.verify(token, private_key, {algorithms : 'RS256'});
+            return decoded;
+        }
+        catch(err)
+        {
+            this.error(err.message);
+        }
+        return undefined;
+    }
+
+    userExists(username)
     {
         const SQL_GET_USER_BY_NAME = `SELECT username FROM users WHERE username = ?`;
 
-        try {
+        try
+        {
             const stmt = this.db.prepare(SQL_GET_USER_BY_NAME);
-            const result = stmt.get(user_name);
+            const result = stmt.get(username);
             return (result !== undefined);
-        } catch(err) {
+        }
+        catch(err)
+        {
             this.error(err.message);
         }
         return false;
