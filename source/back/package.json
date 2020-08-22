@@ -1,0 +1,21 @@
+{
+  "name": "back",
+  "version": "1.0.0",
+  "description": "",
+  "main": "auth.js",
+  "scripts": {
+    "test": "jest --verbose"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^26.4.1"
+  },
+  "dependencies": {
+    "bcrypt": "^5.0.0",
+    "better-sqlite3": "^7.1.0",
+    "jsonwebtoken": "^8.5.1",
+    "uuid": "^8.3.0"
+  }
+}
