@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+    <head>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="/static/js/jquery.min.js"></script>
+        <link href="static/css/login.css" rel="stylesheet"></link>
+        <!-- <link rel="icon" type="image/png" href="assets/favicon-16x16.png" sizes="16x16"> -->
+        <!-- <link rel="icon" type="image/png" href="assets/favicon-32x32.png" sizes="32x32"> -->
+        <!-- <link rel="icon" type="image/png" href="assets/favicon-196x196.png" sizes="196x196"> -->
+        <title>Myah! - Login</title>
+    </head>
+    <body>
+        <form action="/auth" method="post" id="FormLogin">
+            <div class="imgcontainer">
+                <!-- <img src="image.png" alt="image" class="login_image"> -->
+            </div>
+
+            <div class="container">
+                <label for="username"><b>Username</b></label>
+                <input type="text" placeholder="Enter Username" name="username" id="username" required>
+
+                <label for="password"><b>Password</b></label>
+                <input type="password" placeholder="Enter Password" name="password" id="password" required>
+
+                <button type="submit">Login</button>
+                <label>
+                    <input type="checkbox" checked="checked" name="remember" id="remember"> Remember me
+                </label>
+            </div>
+
+            <div class="container" style="background-color:#f1f1f1">
+                <span class="psw">Forgot password? Too bad.</span>
+            </div>
+        </form>
+        <script>
+            $(function () {
+                var frm = $('#FormLogin');
+                frm.submit(function (e) {
+                    e.preventDefault();
+                    $.ajax({
+                            type: frm.attr('method'),
+                            url: frm.attr('action'),
+                            data: frm.serialize(),
+                            success: function (data) {
+                                console.log('Submission was successful.');
+                                console.log(data);
+                                // if data.success
+                                    // Save data.token to cookie
+                                    // Redirect
+                            },
+                            error: function (data) {
+                                console.log('An error occurred.');
+                                console.log(data);
+                            },
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>
