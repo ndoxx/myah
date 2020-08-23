@@ -2,12 +2,8 @@
 	"folders":
 	[
 		{
-			"name": "Frontend",
-			"path": "source/front",
-		},
-		{
-			"name": "Backend",
-			"path": "source/back",
+			"name": "Myah",
+			"path": "source/myah",
 			"file_exclude_patterns": ["package-lock.json"],
 			"folder_exclude_patterns": ["node_modules","data"],
 		},

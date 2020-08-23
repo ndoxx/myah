@@ -4,10 +4,10 @@ const fs = require("fs");
 const jwt = require('jsonwebtoken');
 const bcrypt = require("bcrypt");
 const Database = require("better-sqlite3");
-const { v4: uuidv4 } = require('uuid');
+const {v4 : uuidv4} = require('uuid');
 
 const PASSWORD_HASH_SALT_ROUNDS = 10;
-const PRIVATE_JWT_RSA_KEY_PATH = 'data/jwtRS256.key';
+const PRIVATE_JWT_RSA_KEY_PATH = 'data/key/jwtRS256.key';
 
 module.exports = class AuthenticationSystem
 {
@@ -40,8 +40,7 @@ module.exports = class AuthenticationSystem
         }
 
         // Check that users table exists, if not, create it
-        const SQL_CREATE_USERS_TABLE = 
-        `CREATE TABLE IF NOT EXISTS users (
+        const SQL_CREATE_USERS_TABLE = `CREATE TABLE IF NOT EXISTS users (
             id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
             username VARCHAR(256) NOT NULL,
             password CHAR(60)
