@@ -3,6 +3,7 @@
     <head>
         <script src="/socket.io/socket.io.js"></script>
         <script src="/static/js/jquery.min.js"></script>
+        <script src="/static/js/js.cookie.min.js"></script>
         <link href="static/css/login.css" rel="stylesheet"></link>
         <!-- <link rel="icon" type="image/png" href="assets/favicon-16x16.png" sizes="16x16"> -->
         <!-- <link rel="icon" type="image/png" href="assets/favicon-32x32.png" sizes="32x32"> -->
@@ -10,7 +11,7 @@
         <title>Myah! - Login</title>
     </head>
     <body>
-        <form action="/auth" method="post" id="FormLogin">
+        <form action="/login" method="post" id="FormLogin">
             <div class="imgcontainer">
                 <!-- <img src="image.png" alt="image" class="login_image"> -->
             </div>
@@ -34,26 +35,11 @@
         </form>
         <script>
             $(function () {
-                var frm = $('#FormLogin');
-                frm.submit(function (e) {
-                    e.preventDefault();
-                    $.ajax({
-                            type: frm.attr('method'),
-                            url: frm.attr('action'),
-                            data: frm.serialize(),
-                            success: function (data) {
-                                console.log('Submission was successful.');
-                                console.log(data);
-                                // if data.success
-                                    // Save data.token to cookie
-                                    // Redirect
-                            },
-                            error: function (data) {
-                                console.log('An error occurred.');
-                                console.log(data);
-                            },
-                    });
-                });
+                // Check if we have a token saved in cookie and attempt automatic login
+                const token = Cookies.get('auth_token');
+                const username = Cookies.get('username');
+                if(token && username)
+                    window.location.replace('/chat');
             });
         </script>
     </body>

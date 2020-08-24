@@ -3,7 +3,7 @@ cd source/back
 npm init -y
 sudo npm install -g eslint
 npm install jest --save-dev
-npm install bcrypt better-sqlite3 jsonwebtoken uuid socket.io express
+npm install bcrypt better-sqlite3 jsonwebtoken uuid socket.io express cookie-parser
 
 # Generate a private and a public RSA key for use with JWT
 mkdir data; cd data
