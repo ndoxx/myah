@@ -3,6 +3,7 @@
     <head>
         <script src="/socket.io/socket.io.js"></script>
         <script src="/static/js/jquery.min.js"></script>
+        <script src="/static/js/js.cookie.min.js"></script>
         <title>Myah!</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,15 +23,22 @@
         </form>
         <script>
             $(function () {
-                var socket = io();
+                const socket = io();
+                const username = Cookies.get('username');
+
                 $('form').submit(function(e) {
                     e.preventDefault(); // prevents page reloading
-                    socket.emit('chat/message', $('#m').val());
+                    socket.emit('chat/message', {username: username, payload: $('#m').val()});
                     $('#m').val('');
                     return false;
                 });
                 socket.on('chat/message', function(msg) {
-                    $('#messages').append($('<li>').text(msg));
+                    $('#messages').append($('<li>').text(`${msg.username}> ${msg.payload}`));
+                });
+                socket.on('connect', function() {
+                    // Let the server know this socket belongs to this user
+                    socket.emit('user/associate', {username: username});
+                    console.log('connected')
                 });
             });
         </script>

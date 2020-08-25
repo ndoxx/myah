@@ -1,7 +1,6 @@
 <!doctype html>
 <html>
     <head>
-        <script src="/socket.io/socket.io.js"></script>
         <script src="/static/js/jquery.min.js"></script>
         <script src="/static/js/js.cookie.min.js"></script>
         <link href="static/css/login.css" rel="stylesheet"></link>
@@ -11,28 +10,24 @@
         <title>Myah! - Login</title>
     </head>
     <body>
-        <form action="/login" method="post" id="FormLogin">
-            <div class="imgcontainer">
-                <!-- <img src="image.png" alt="image" class="login_image"> -->
+        <div class="container">
+            <div class="formBox">
+                <form action="/login" method="post" id="FormLogin">
+                    <label for="username"><b>Username</b></label>
+                    <input type="text" placeholder="Enter Username" name="username" id="username" required>
+
+                    <label for="password"><b>Password</b></label>
+                    <input type="password" placeholder="Enter Password" name="password" id="password" required>
+
+                    <button type="submit">Login</button>
+                    <label>
+                        <input type="checkbox" checked="checked" name="remember" id="remember"> Remember me
+                    </label>
+                </form>
+                <span class="forgot_password">Forgot password? Too bad.</span>
             </div>
+        </div>
 
-            <div class="container">
-                <label for="username"><b>Username</b></label>
-                <input type="text" placeholder="Enter Username" name="username" id="username" required>
-
-                <label for="password"><b>Password</b></label>
-                <input type="password" placeholder="Enter Password" name="password" id="password" required>
-
-                <button type="submit">Login</button>
-                <label>
-                    <input type="checkbox" checked="checked" name="remember" id="remember"> Remember me
-                </label>
-            </div>
-
-            <div class="container" style="background-color:#f1f1f1">
-                <span class="psw">Forgot password? Too bad.</span>
-            </div>
-        </form>
         <script>
             $(function () {
                 // Check if we have a token saved in cookie and attempt automatic login
