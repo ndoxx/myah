@@ -16,14 +16,16 @@ module.exports = class AuthenticationSystem
         if(options.verbose)
         {
             this.log = (text) => { console.log(text); };
+            this.logDB = (text) => { console.log(`\x1b[36m${text}\x1b[0m`); };
             this.error = (text) => { console.error(`\x1b[31m${text}\x1b[0m`); };
         }
         else
         {
             this.log = () => {};
+            this.logDB = () => {};
             this.error = () => {};
         }
-        this.log("Launching authentication server...");
+        this.log("Launching authentication system...");
         this.initDatabase(db_location);
         this.log("done.");
     }
@@ -32,7 +34,7 @@ module.exports = class AuthenticationSystem
     {
         try
         {
-            this.db = new Database(db_location, {verbose : this.log});
+            this.db = new Database(db_location, {verbose : this.logDB});
         }
         catch(err)
         {
@@ -153,5 +155,23 @@ module.exports = class AuthenticationSystem
             this.error(err.message);
         }
         return false;
+    }
+
+    getUserID(username)
+    {
+        const SQL_GET_USER_BY_NAME = `SELECT * FROM users WHERE username = ?`;
+        
+        try
+        {
+            const stmt = this.db.prepare(SQL_GET_USER_BY_NAME);
+            const result = stmt.get(username);
+            if(result)
+                return result.id;
+        }
+        catch(err)
+        {
+            this.error(err.message);
+        }
+        return undefined;
     }
 };

@@ -6,6 +6,7 @@ const express = require("express");
 const cookie_parser = require('cookie-parser');
 
 const PORT = 8090;
+const DATABASE_LOCATION = 'data/db/myah.sqlite';
 const AUTH_TOKEN_TTL_S = 60 * 60 * 24 * 7;
 const AUTH_TOKEN_TTL_SHORT_LIVED_S = 60 * 5;
 const CREDENTIALS = {
@@ -23,7 +24,9 @@ const server = require('https').createServer(CREDENTIALS, app);
 const io = require("socket.io")(server);
 
 const AuthenticationSystem = require('./auth.js');
-const auth = new AuthenticationSystem('data/db/myah.sqlite', {verbose : true});
+const PostSystem = require('./post.js');
+const auth = new AuthenticationSystem(DATABASE_LOCATION, {verbose : true});
+const poster = new PostSystem(DATABASE_LOCATION, {verbose : true});
 const Users = new Map();
 const Sockets = new Map();
 
@@ -143,7 +146,11 @@ io.on('connection', (socket) => {
     socket.on(MSG_USER_ASSOCIATE, (msg) => { associateUser(msg.username, socket.id); });
 
     socket.on(MSG_CHAT_MESSAGE, (msg) => {
-        // Set date, save to DB and broadcast
+        // Set date, base64 encode, save to DB and broadcast
+        msg.timestamp = Date.now();
+        const userid = Users.get(msg.username).userid;
+        const body_b64 = base64encode(msg.payload);
+        poster.post(userid, msg.timestamp, body_b64);
         io.emit(MSG_CHAT_MESSAGE, msg);
     });
 });
@@ -154,8 +161,9 @@ function addUser(username)
 {
     if(!Users.has(username))
     {
-        Users.set(username, {username : username});
-        console.log(`Added new user '${username}'.`);
+        const userid = auth.getUserID(username);
+        Users.set(username, {username : username, userid : userid});
+        console.log(`Added new user '${username}', userid: ${userid}.`);
     }
 }
 
@@ -192,17 +200,18 @@ function associateUser(username, socketid)
     console.log(`Associated user '${username}' to socket ID '${socketid}'`);
 }
 
-function serveStatus(res, sta, message)
+function serveStatus(res, sta, message) { res.status(sta).end(`<h1>${sta}</h1> <h2>${message}</h2>`); }
+
+function serveLoginPage(res) { res.sendFile(path.join(__dirname, 'public/login.html')); }
+
+function serveChatPage(res) { res.sendFile(path.join(__dirname, 'public/chat.html')); }
+
+function base64encode(str)
 {
-    res.status(sta).end(`<h1>${sta}</h1> <h2>${message}</h2>`);
+    return Buffer.from(str, 'utf8').toString('base64');
 }
 
-function serveLoginPage(res)
+function base64decode(str)
 {
-    res.sendFile(path.join(__dirname, 'public/login.html'));
-}
-
-function serveChatPage(res)
-{
-    res.sendFile(path.join(__dirname, 'public/chat.html'));
+    return Buffer.from(str, 'base64').toString('utf8');
 }
