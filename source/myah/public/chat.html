@@ -32,12 +32,20 @@
                     $('#m').val('');
                     return false;
                 });
-                socket.on('chat/message', function(msg) {
-                    $('#messages').append($('<li>').text(`${msg.username}> ${msg.payload}`));
+                socket.on('chat/message', function(pkt) {
+                    $('#messages').prepend($('<li>').text(`${pkt.username}> ${pkt.payload}`));
+                });
+                socket.on('chat/history', function(pkt) {
+                    $('#messages').html('');
+                    pkt.history.forEach(function(msg) {
+                        $('#messages').append($('<li>').text(`${msg.username}> ${msg.payload}`));
+                    });
                 });
                 socket.on('connect', function() {
                     // Let the server know this socket belongs to this user
                     socket.emit('user/associate', {username: username});
+                    // Retrieve last 50 posts
+                    socket.emit('chat/get', {last: 50});
                     console.log('connected')
                 });
             });

@@ -174,4 +174,22 @@ module.exports = class AuthenticationSystem
         }
         return undefined;
     }
+
+    getUserName(userid)
+    {
+        const SQL_GET_USER_BY_ID = `SELECT * FROM users WHERE id = ?`;
+        
+        try
+        {
+            const stmt = this.db.prepare(SQL_GET_USER_BY_ID);
+            const result = stmt.get(userid);
+            if(result)
+                return result.username;
+        }
+        catch(err)
+        {
+            this.error(err.message);
+        }
+        return undefined;
+    }
 };

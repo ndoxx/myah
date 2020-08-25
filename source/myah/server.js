@@ -17,6 +17,8 @@ const CREDENTIALS = {
 };
 
 const MSG_CHAT_MESSAGE = 'chat/message';
+const MSG_CHAT_GET = 'chat/get';
+const MSG_CHAT_HISTORY = 'chat/history';
 const MSG_USER_ASSOCIATE = 'user/associate';
 
 const app = express();
@@ -143,15 +145,32 @@ io.on('connection', (socket) => {
         Sockets.delete(socket.id);
     });
 
-    socket.on(MSG_USER_ASSOCIATE, (msg) => { associateUser(msg.username, socket.id); });
+    socket.on(MSG_USER_ASSOCIATE, (pkt) => { associateUser(pkt.username, socket.id); });
 
-    socket.on(MSG_CHAT_MESSAGE, (msg) => {
+    socket.on(MSG_CHAT_MESSAGE, (pkt) => {
         // Set date, base64 encode, save to DB and broadcast
-        msg.timestamp = Date.now();
-        const userid = Users.get(msg.username).userid;
-        const body_b64 = base64encode(msg.payload);
-        poster.post(userid, msg.timestamp, body_b64);
-        io.emit(MSG_CHAT_MESSAGE, msg);
+        pkt.timestamp = Date.now();
+        const userid = Users.get(pkt.username).userid;
+        const body_b64 = base64encode(pkt.payload);
+        poster.post(userid, pkt.timestamp, body_b64);
+        io.emit(MSG_CHAT_MESSAGE, pkt);
+    });
+
+    socket.on(MSG_CHAT_GET, (pkt) => {
+        const posts = poster.getLastPosts(pkt.last);
+        // Userid to name table
+        const names = new Map();
+        posts.forEach(function(msg) {
+            if(!names.has(msg.userid))
+                names.set(msg.userid, auth.getUserName(msg.userid));
+        });
+        // Send base64 decoded messages back to client
+        const out = {history: []};
+        posts.forEach(function(msg) {
+            out.history.push({username : names.get(msg.userid), payload : base64decode(msg.body)});
+        });
+
+        io.to(socket.id).emit(MSG_CHAT_HISTORY, out);
     });
 });
 
