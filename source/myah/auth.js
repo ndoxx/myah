@@ -4,10 +4,10 @@ const fs = require("fs");
 const jwt = require('jsonwebtoken');
 const bcrypt = require("bcrypt");
 const Database = require("better-sqlite3");
-const { v4: uuidv4 } = require('uuid');
+const {v4 : uuidv4} = require('uuid');
 
 const PASSWORD_HASH_SALT_ROUNDS = 10;
-const PRIVATE_JWT_RSA_KEY_PATH = 'data/jwtRS256.key';
+const PRIVATE_JWT_RSA_KEY_PATH = 'data/key/jwtRS256.key';
 
 module.exports = class AuthenticationSystem
 {
@@ -16,14 +16,16 @@ module.exports = class AuthenticationSystem
         if(options.verbose)
         {
             this.log = (text) => { console.log(text); };
+            this.logDB = (text) => { console.log(`\x1b[36m${text}\x1b[0m`); };
             this.error = (text) => { console.error(`\x1b[31m${text}\x1b[0m`); };
         }
         else
         {
             this.log = () => {};
+            this.logDB = () => {};
             this.error = () => {};
         }
-        this.log("Launching authentication server...");
+        this.log("Launching authentication system...");
         this.initDatabase(db_location);
         this.log("done.");
     }
@@ -32,7 +34,7 @@ module.exports = class AuthenticationSystem
     {
         try
         {
-            this.db = new Database(db_location, {verbose : this.log});
+            this.db = new Database(db_location, {verbose : this.logDB});
         }
         catch(err)
         {
@@ -40,8 +42,7 @@ module.exports = class AuthenticationSystem
         }
 
         // Check that users table exists, if not, create it
-        const SQL_CREATE_USERS_TABLE = 
-        `CREATE TABLE IF NOT EXISTS users (
+        const SQL_CREATE_USERS_TABLE = `CREATE TABLE IF NOT EXISTS users (
             id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
             username VARCHAR(256) NOT NULL,
             password CHAR(60)
@@ -154,5 +155,23 @@ module.exports = class AuthenticationSystem
             this.error(err.message);
         }
         return false;
+    }
+
+    getUserID(username)
+    {
+        const SQL_GET_USER_BY_NAME = `SELECT * FROM users WHERE username = ?`;
+        
+        try
+        {
+            const stmt = this.db.prepare(SQL_GET_USER_BY_NAME);
+            const result = stmt.get(username);
+            if(result)
+                return result.id;
+        }
+        catch(err)
+        {
+            this.error(err.message);
+        }
+        return undefined;
     }
 };
