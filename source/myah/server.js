@@ -101,7 +101,7 @@ app.post('/logout', (req, res) => {
         if(decoded && decoded.logged_in_as === username)
         {
             console.log(`User '${username}' logged out.`);
-            removeUserByName(username);
+            disconnectUser(username);
             serveLoginPage(res);
         }
         else
@@ -156,7 +156,7 @@ io.use(function(socket, next) {
 
 io.on('connection', (socket) => {
     socket.on('disconnect', () => {
-        removeUserBySocketID(socket.id);
+        removeUser(Sockets.get(socket.id));
         Sockets.delete(socket.id);
     });
 
@@ -192,16 +192,14 @@ function handshake(handshakeData, socketid)
 {
     const username = handshakeData.username;
     const token = handshakeData.token;
-    
+
     console.log(`Beginning handshake for user '${username}'.`);
     if(token && username)
     {
         const decoded = auth.verifyAuthenticationToken(token);
         if(decoded && decoded.logged_in_as === username)
         {
-            addUser(username);
-            Users.get(username).socketid = socketid;
-            Sockets.set(socketid, username);
+            addUser(username, socketid);
             console.log(`Associated user '${username}' to socket ID '${socketid}'`);
             return true;
         }
@@ -211,37 +209,41 @@ function handshake(handshakeData, socketid)
     return false;
 }
 
-function addUser(username)
+function addUser(username, socketid)
 {
     if(!Users.has(username))
     {
         const userid = auth.getUserID(username);
-        Users.set(username, {username : username, userid : userid});
+        Users.set(username, {username : username, userid : userid, socketid : socketid});
+        Sockets.set(socketid, username);
         console.log(`Added new user '${username}', userid: ${userid}.`);
     }
 }
 
-function removeUserBySocketID(socketid)
+function disconnectUser(username)
 {
-    if(Sockets.has(socketid))
+    if(Users.has(username))
     {
-        const username = Sockets.get(socketid);
-        Users.delete(username);
-        console.log(`User ${username} disconnected.`);
+        const user = Users.get(username);
+        if(io.sockets.connected[user.socketid])
+        {
+            io.sockets.connected[user.socketid].disconnect();
+            console.log(`User '${username}' disconnected.`)
+        }
     }
     else
-        console.error(`Tried to unlist unknown socket ID: ${socketid}`);
+        console.error(`Tried to disconnect unknown user: ${username}`);
 }
 
-function removeUserByName(username)
+function removeUser(username)
 {
     if(Users.has(username))
     {
         Users.delete(username);
-        console.log(`User ${username} disconnected.`);
+        console.log(`Removed user '${username}'.`);
     }
     else
-        console.error(`Tried to unlist unknown user: ${username}`);
+        console.error(`Tried to remove unknown user: ${username}`);
 }
 
 function serveStatus(res, sta, message) { res.status(sta).end(`<h1>${sta}</h1> <h2>${message}</h2>`); }
