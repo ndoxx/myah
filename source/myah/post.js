@@ -1,6 +1,5 @@
 'use strict';
 
-const fs = require("fs");
 const Database = require("better-sqlite3");
 
 const SQL_CREATE_POSTS_TABLE =

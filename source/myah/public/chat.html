@@ -22,34 +22,31 @@
             <input id="m" autocomplete="off" /><button>Send</button>
         </form>
         <script>
-            $(function () {
+            $(function() {
+                const createHandshakeQuery = () => { return {username : username, token : Cookies.get('auth_token')}; }
                 const username = Cookies.get('username');
-                const handshakeData = { username: username, token: Cookies.get('auth_token') };    
-                const socket = io({query: 'handshakeData=' + JSON.stringify(handshakeData)  });
+                const socket = io({query : createHandshakeQuery(), rejectUnauthorized : false});
 
-                $('form').submit(function(e) {
+                $('form').submit((e) => {
                     e.preventDefault(); // prevents page reloading
-                    socket.emit('chat/message', {username: username, payload: $('#m').val()});
+                    socket.emit('chat/message', {username : username, payload : $('#m').val()});
                     $('#m').val('');
                     return false;
                 });
-                socket.on('chat/message', function(pkt) {
-                    $('#messages').prepend($('<li>').text(`${pkt.username}> ${pkt.payload}`));
-                });
-                socket.on('chat/history', function(pkt) {
+                socket.on('chat/message', (pkt) => { $('#messages').prepend($('<li>').text(`${pkt.username}> ${pkt.payload}`)); });
+                socket.on('chat/history', (pkt) => {
                     $('#messages').html('');
-                    pkt.history.forEach(function(msg) {
-                        $('#messages').append($('<li>').text(`${msg.username}> ${msg.payload}`));
-                    });
+                    pkt.history.forEach((msg) => { $('#messages').append($('<li>').text(`${msg.username}> ${msg.payload}`)); });
                 });
-                socket.on('connect', function() {
-                    // Retrieve last 50 posts
-                    socket.emit('chat/get', {last: 50});
-                    console.log('connected');
+                socket.on('connect', () => {
+                    socket.emit('chat/get', {last : 50}); // Retrieve last 50 posts
+                    console.log(`connected, socket ID: ${socket.id}`);
                 });
-                socket.on('error', function(err) {
-                    console.error(err);
+                socket.on('reconnect_attempt', () => {
+                    socket.io.opts.query = createHandshakeQuery();
+                    console.log('attempting to reconnect');
                 });
+                socket.on('error', (err) => { console.error(err); });
             });
         </script>
     </body>

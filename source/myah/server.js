@@ -9,20 +9,17 @@ const PORT = 8090;
 const DATABASE_LOCATION = 'data/db/myah.sqlite';
 const AUTH_TOKEN_TTL_S = 60 * 60 * 24 * 7;
 const AUTH_TOKEN_TTL_SHORT_LIVED_S = 60 * 5;
-const CREDENTIALS = {
+const TLS_OPTIONS = {
     key : fs.readFileSync('data/key/privatekey.pem'),
-    cert : fs.readFileSync('data/key/certificate.pem'),
-    requestCert : false,
-    rejectUnauthorized : false
+    cert : fs.readFileSync('data/key/certificate.pem')
 };
 
 const MSG_CHAT_MESSAGE = 'chat/message';
 const MSG_CHAT_GET = 'chat/get';
 const MSG_CHAT_HISTORY = 'chat/history';
-const MSG_USER_ASSOCIATE = 'user/associate';
 
 const app = express();
-const server = require('https').createServer(CREDENTIALS, app);
+const server = require('https').createServer(TLS_OPTIONS, app);
 const io = require("socket.io")(server);
 
 const AuthenticationSystem = require('./auth.js');
@@ -139,10 +136,8 @@ app.get('/chat', (req, res) => {
 io.use(function(socket, next) {
     try
     {
-        const handshakeData = JSON.parse(socket.handshake.query.handshakeData);
-        if(handshake(handshakeData, socket.id))
+        if(handshake(socket.handshake.query, socket.id))
         {
-            console.log(`Handshake complete for user '${handshakeData.username}'.`);
             next();
             return;
         }
@@ -188,10 +183,10 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => { console.log(`https://localhost:${PORT}`); });
 
-function handshake(handshakeData, socketid)
+function handshake(handshake_query, socketid)
 {
-    const username = handshakeData.username;
-    const token = handshakeData.token;
+    const username = handshake_query.username;
+    const token = handshake_query.token;
 
     console.log(`Beginning handshake for user '${username}'.`);
     if(token && username)
@@ -228,7 +223,7 @@ function disconnectUser(username)
         if(io.sockets.connected[user.socketid])
         {
             io.sockets.connected[user.socketid].disconnect();
-            console.log(`User '${username}' disconnected.`)
+            console.log(`User '${username}' disconnected.`);
         }
     }
     else
