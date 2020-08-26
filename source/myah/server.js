@@ -190,10 +190,10 @@ server.listen(PORT, () => { console.log(`https://localhost:${PORT}`); });
 
 function handshake(handshakeData, socketid)
 {
-    console.log(`Beginning handshake for user '${username}'.`);
-
     const username = handshakeData.username;
     const token = handshakeData.token;
+    
+    console.log(`Beginning handshake for user '${username}'.`);
     if(token && username)
     {
         const decoded = auth.verifyAuthenticationToken(token);

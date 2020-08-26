@@ -45,7 +45,10 @@
                 socket.on('connect', function() {
                     // Retrieve last 50 posts
                     socket.emit('chat/get', {last: 50});
-                    console.log('connected')
+                    console.log('connected');
+                });
+                socket.on('error', function(err) {
+                    console.error(err);
                 });
             });
         </script>
