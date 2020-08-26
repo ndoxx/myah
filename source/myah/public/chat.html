@@ -23,8 +23,9 @@
         </form>
         <script>
             $(function () {
-                const socket = io();
                 const username = Cookies.get('username');
+                const handshakeData = { username: username, token: Cookies.get('auth_token') };    
+                const socket = io({query: 'handshakeData=' + JSON.stringify(handshakeData)  });
 
                 $('form').submit(function(e) {
                     e.preventDefault(); // prevents page reloading
@@ -42,8 +43,6 @@
                     });
                 });
                 socket.on('connect', function() {
-                    // Let the server know this socket belongs to this user
-                    socket.emit('user/associate', {username: username});
                     // Retrieve last 50 posts
                     socket.emit('chat/get', {last: 50});
                     console.log('connected')
