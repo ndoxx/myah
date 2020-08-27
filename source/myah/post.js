@@ -47,14 +47,16 @@ module.exports = class PostSystem
     post(userid, timestamp, body)
     {
         const SQL_INSERT_POST = `INSERT INTO posts (userid, timestamp, body) VALUES (?, ?, ?)`;
+        const SQL_GET_LAST_ID = `SELECT last_insert_rowid() as id`;
         try
         {
-            const stmt = this.db.prepare(SQL_INSERT_POST);
-            stmt.run(userid, timestamp, body);
+            this.db.prepare(SQL_INSERT_POST).run(userid, timestamp, body);
+            return this.db.prepare(SQL_GET_LAST_ID).get().id;
         }
         catch(err)
         {
             this.error(err.message);
+            return 0;
         }
     }
 
@@ -99,5 +101,19 @@ module.exports = class PostSystem
         {
             this.error(err.message);
         }
+    }
+
+    checkAuthor(userid, postid)
+    {
+        const SQL_GET_POST_BY_ID = `SELECT userid FROM posts WHERE id = ?`;
+        try
+        {
+            return (this.db.prepare(SQL_GET_POST_BY_ID).get(postid).userid === userid);
+        }
+        catch(err)
+        {
+            this.error(err.message);
+        }
+        return false;
     }
 };

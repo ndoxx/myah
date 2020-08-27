@@ -1,6 +1,7 @@
 :root{
     --bkg-body: #404040;
-    --bkg-textarea: #fff;
+    --bkg-textarea: #dddddd;
+    --bkg-btn-send: #ffa300;
 
 	--bubble-dark: rgba(76, 170, 186, 0.97);
 	--bubble-light: rgba(108, 184, 198, 0.9);
@@ -28,44 +29,36 @@ body {
 	box-sizing: border-box;
 }
 
-form {
+#wrapper {
 	display: flex;
-	flex-direction: row;
-	background: #000;
-	padding: 3px;
-	position: fixed;
-	bottom: 0;
-	width: 100%;
-	height: 10%;
-}
-form textarea {
-	flex-grow: 9;
-	border: 0;
-	padding: 10px;
-	margin-right: 0.5%;
-	background-color: var(--bkg-textarea);
-	color: var(--bkg-body);
-}
-
-form button {
-	flex-grow: 1;
-	background: rgb(130, 224, 255);
-	border: none;
-	padding: 10px;
-}
-
-#messagingPanel {
-	display: flex;
+	flex-direction: column;
 	flex: 1 1 auto;
-	flex-direction: row;
 }
 
 #messages {
+	display: inline-block;
 	margin: 0;
 	padding: 0;
+	overflow-y: scroll;
+	height: 90vh;
 }
-#messages div {
-	padding: 5px 10px;
+#controls {
+	display: flex;
+	flex-direction: row;
+	padding: 3px;
+	height: 9vh;
+}
+#controls textarea {
+	flex-grow: 9;
+	margin-right: 5px;
+	background-color: var(--bkg-textarea);
+	color: var(--bkg-body);
+	border: none;
+}
+#controls button {
+	flex-grow: 1;
+	background: var(--bkg-btn-send);
+	border: none;
 }
 
 .bubble{
@@ -80,7 +73,9 @@ form button {
 	-moz-box-shadow: 10px 10px 3px rgba(0,0,0,0.4);
 	box-shadow: 10px 10px 3px rgba(0,0,0,0.4);
 	margin-bottom: 10px;
-	border-radius: 10px;
+	border-radius: 5px;
+    -webkit-border-radius:5px;
+    -moz-border-radius:5px;
 	margin-right: 20px;
 	padding-left: 20px;
 	padding-right: 20px;
@@ -109,6 +104,7 @@ form button {
 	width: 90%;
     padding: 5px;
     padding-left: 15px;
+    margin-top: 15px;
     text-align: justify;
     text-justify: inter-word;
     vertical-align: middle;
@@ -130,7 +126,6 @@ form button {
 	padding-right: 20px;
 	padding-top: 10px;
 	padding-bottom: 10px;
-    border-radius:10px;
     margin-right:50px;
     position:relative;
     color: var(--bubble-spk);
@@ -140,8 +135,6 @@ form button {
     background:-moz-linear-gradient(var(--bubble-dark), var(--bubble-light));
     background:-o-linear-gradient(var(--bubble-dark), var(--bubble-light));
     background:linear-gradient(var(--bubble-dark), var(--bubble-light));
-    -webkit-border-radius:10px;
-    -moz-border-radius:10px;
     opacity: 0.9;
     word-break: break-all;
 }
@@ -185,6 +178,19 @@ form button {
 
 .bubble-spk:hover {
 	box-shadow: inset 0 0 100px 100px rgba(200, 200, 255, 0.2);
+}
+
+.bubble-cross{
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	font-weight: bold;
+	color: var(--icon-dark);
+}
+.bubble-cross:hover{
+	cursor: pointer;
+	cursor: hand;
+	color: var(--icon-light);
 }
 
 img.bubble-image {

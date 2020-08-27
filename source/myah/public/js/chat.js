@@ -1,16 +1,15 @@
 'use strict';
 
+let socket;
 let logged_in_as = '';
-let postcount = 0;
 let imgcount = 0;
 
-function displayMessage(username, message, timestamp)
+function displayMessage(postid, username, message, timestamp)
 {
     const other = (username !== logged_in_as);
     const bubble_style = `bubble bubble-spk${(other ? ' other' : '')}`;
     const bubble_user_style = `bubble-user${(other ? ' other' : '')}`;
-    const postid = `msg_${postcount}`;
-    const template = '<div id="{{postid}}", class="{{bubble_style}}"><div class="bubble-content">{{message}}</div><div class="{{bubble_user_style}}"><strong>{{username}}</strong><br/><small>{{date}}</small></div></div>';
+    const template = '<div id="{{postid}}" class="{{bubble_style}}"><div class="bubble-content">{{message}}</div><div class="{{bubble_user_style}}"><strong>{{username}}</strong><br/><small>{{date}}</small></div></div>';
     const html = Mustache.render(template, {
         postid : postid,
         bubble_style : bubble_style,
@@ -20,11 +19,10 @@ function displayMessage(username, message, timestamp)
         date : timestampToDateString(timestamp)
     });
     $("#messages").prepend(html);
-    $(`#${postid}`).linkify();
-    parseImages($(`#${postid}>div>a`));
-    setImageCallbacks($(`#${postid}>div>img`));
-
-    ++postcount;
+    $(`#messages>div#${postid}`).linkify();
+    parseImages($(`#messages>div#${postid}>div>a`));
+    setImageCallbacks($(`#messages>div#${postid}>div>img`));
+    decorate($(`#messages>div#${postid}`));
 }
 
 function timestampToDateString(timestamp)
@@ -44,7 +42,7 @@ function parseImages(selector)
         case '.png':
         case '.jpg':
         case '.jpeg':
-            var img = $('<img>', {src : this.href, class : "bubble-image", id : `uimg_${imgcount}`});
+            var img = $('<img>', {src : this.href, class : "bubble-image", id : imgcount});
             $(this).replaceWith(img);
             break;
         }
@@ -64,6 +62,18 @@ function setImageCallbacks(selector)
     });
 }
 
+function decorate(selector)
+{
+    if(selector.hasClass("other")) return;
+
+    const postid = selector.attr('id');
+    selector.prepend(`<div class="bubble-cross" id="${postid}">&#10008;</div>`);
+    selector.children(":first").click(()=> {
+        selector.remove();
+        socket.emit('chat/delete', {postid : postid});
+    });
+}
+
 function getFileExtension(filename)
 {
     var dot = filename.lastIndexOf(".");
@@ -76,7 +86,7 @@ function getFileExtension(filename)
 $(function() {
     logged_in_as = Cookies.get('username');
     const createHandshakeQuery = () => { return {username : logged_in_as, token : Cookies.get('auth_token')}; };
-    const socket = io({query : createHandshakeQuery(), rejectUnauthorized : false});
+    socket = io({query : createHandshakeQuery(), rejectUnauthorized : false});
 
     $('form').submit((e) => {
         e.preventDefault(); // prevents page reloading
@@ -84,10 +94,10 @@ $(function() {
         $('#m').val('');
         return false;
     });
-    socket.on('chat/message', (pkt) => { displayMessage(pkt.username, pkt.payload, pkt.timestamp); });
+    socket.on('chat/message', (pkt) => { displayMessage(pkt.postid, pkt.username, pkt.payload, pkt.timestamp); });
     socket.on('chat/history', (pkt) => {
         $('#messages').html('');
-        pkt.history.forEach((msg) => { displayMessage(msg.username, msg.payload, msg.timestamp); });
+        pkt.history.forEach((msg) => { displayMessage(msg.postid, msg.username, msg.payload, msg.timestamp); });
     });
     socket.on('connect', () => {
         socket.emit('chat/get', {last : 50}); // Retrieve last 50 posts

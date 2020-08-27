@@ -16,6 +16,7 @@ const TLS_OPTIONS = {
 
 const MSG_CHAT_MESSAGE = 'chat/message';
 const MSG_CHAT_GET = 'chat/get';
+const MSG_CHAT_DELETE = 'chat/delete';
 const MSG_CHAT_HISTORY = 'chat/history';
 
 const app = express();
@@ -160,7 +161,7 @@ io.on('connection', (socket) => {
         pkt.timestamp = Date.now();
         const userid = Users.get(pkt.username).userid;
         const body_b64 = base64encode(pkt.payload);
-        poster.post(userid, pkt.timestamp, body_b64);
+        pkt.postid = poster.post(userid, pkt.timestamp, body_b64);
         io.emit(MSG_CHAT_MESSAGE, pkt);
     });
 
@@ -175,9 +176,16 @@ io.on('connection', (socket) => {
         // Send base64 decoded messages back to client
         const out = {history : []};
         posts.forEach(function(
-            msg) { out.history.push({username : names.get(msg.userid), payload : base64decode(msg.body), timestamp : msg.timestamp}); });
+            msg) { out.history.push({postid : msg.id, username : names.get(msg.userid), payload : base64decode(msg.body), timestamp : msg.timestamp}); });
 
         io.to(socket.id).emit(MSG_CHAT_HISTORY, out);
+    });
+
+    socket.on(MSG_CHAT_DELETE, (pkt) => {
+        // Check that this post belongs to the user requiring its deletion
+        const username = Sockets.get(socket.id);
+        if(poster.checkAuthor(Users.get(username).userid, pkt.postid))
+            poster.deletePost(pkt.postid);
     });
 });
 
