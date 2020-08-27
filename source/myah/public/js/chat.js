@@ -88,8 +88,7 @@ $(function() {
     const createHandshakeQuery = () => { return {username : logged_in_as, token : Cookies.get('auth_token')}; };
     socket = io({query : createHandshakeQuery(), rejectUnauthorized : false});
 
-    $('form').submit((e) => {
-        e.preventDefault(); // prevents page reloading
+    $('#btnSend').click(() => {
         socket.emit('chat/message', {username : logged_in_as, payload : $('#m').val()});
         $('#m').val('');
         return false;
