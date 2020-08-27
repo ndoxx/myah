@@ -54,11 +54,15 @@ body {
 	background-color: var(--bkg-textarea);
 	color: var(--bkg-body);
 	border: none;
+	padding: 5px;
+	border-radius: 5px;
+	resize: none;
 }
 #controls button {
 	flex-grow: 1;
 	background: var(--bkg-btn-send);
 	border: none;
+	border-radius: 5px;
 }
 
 .bubble{
@@ -86,13 +90,11 @@ body {
 .bubble-user{
 	display: table-cell;
     background-color: var(--bubble-u-bkg);
-	width: 10%;
-	padding-left: 15px;
-    padding-right: 0px;
-    padding-bottom: 5px;
-    padding-top: 5px;
+	width: 15%;
+	padding-top: 5px;
     font-size: 13px;
     vertical-align: middle;
+	text-align: center;
 }
 
 .bubble-user.other{

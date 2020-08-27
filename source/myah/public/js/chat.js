@@ -53,22 +53,23 @@ function parseImages(selector)
 function setImageCallbacks(selector)
 {
     selector.each(function() {
-        $(this).click(()=>{
-            if($(this).width()<=200)
-                $(this).animate({"max-width": "700px", "max-height": "700px"}, 500);
+        $(this).click(() => {
+            if($(this).width() <= 200)
+                $(this).animate({"max-width" : "700px", "max-height" : "700px"}, 500);
             else
-                $(this).animate({"max-width": "200px", "max-height": "200px"}, 500);
+                $(this).animate({"max-width" : "200px", "max-height" : "200px"}, 500);
         });
     });
 }
 
 function decorate(selector)
 {
-    if(selector.hasClass("other")) return;
+    if(selector.hasClass("other"))
+        return;
 
     const postid = selector.attr('id');
     selector.prepend(`<div class="bubble-cross" id="${postid}">&#10008;</div>`);
-    selector.children(":first").click(()=> {
+    selector.children(":first").click(() => {
         selector.remove();
         socket.emit('chat/delete', {postid : postid});
     });
@@ -83,6 +84,56 @@ function getFileExtension(filename)
     return extension;
 }
 
+function notifyMe(sender, message)
+{
+    // Does the browser support notifications?
+    if(!("Notification" in window)) return;
+
+    // Find first link in message if any
+    const links = linkify.find(message);
+    const linkhref = (links.length != 0) ? links[0].href : '';
+    const caption = `[${sender}] ${message.substring(0,25)}`;
+
+    const options = {
+        data : {href : linkhref},
+        lang : 'fr-FR',
+        icon : '/static/img/favicon-32x32.png',
+        timestamp : Date.now()
+    };
+
+    let notification = undefined;
+
+    // Check permission
+    if(Notification.permission === "granted")
+        notification = new Notification(caption, options);
+    else if(Notification.permission !== 'denied')
+    {
+        Notification.requestPermission(function(permission) {
+            // Store permission information
+            if(!('permission' in Notification))
+                Notification.permission = permission;
+
+            // User is ok, notify
+            if(permission === "granted")
+                notification = new Notification(caption, options);
+        });
+    }
+
+    if(notification)
+    {
+        if(linkhref !== "")
+        {
+            notification.addEventListener('click', function() {
+                window.open(linkhref);
+                notification.close();
+            });
+            setTimeout(notification.close.bind(notification), 9000);
+        }
+        else
+            setTimeout(notification.close.bind(notification), 5000);
+    }
+}
+
 $(function() {
     logged_in_as = Cookies.get('username');
     const createHandshakeQuery = () => { return {username : logged_in_as, token : Cookies.get('auth_token')}; };
@@ -93,7 +144,11 @@ $(function() {
         $('#m').val('');
         return false;
     });
-    socket.on('chat/message', (pkt) => { displayMessage(pkt.postid, pkt.username, pkt.payload, pkt.timestamp); });
+    socket.on('chat/message', (pkt) => {
+        displayMessage(pkt.postid, pkt.username, pkt.payload, pkt.timestamp);
+        if(pkt.username !== logged_in_as)
+            notifyMe(pkt.username, pkt.payload);
+    });
     socket.on('chat/history', (pkt) => {
         $('#messages').html('');
         pkt.history.forEach((msg) => { displayMessage(msg.postid, msg.username, msg.payload, msg.timestamp); });
