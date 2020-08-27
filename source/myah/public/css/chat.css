@@ -1,0 +1,193 @@
+:root{
+    --bkg-body: #404040;
+    --bkg-textarea: #fff;
+
+	--bubble-dark: rgba(76, 170, 186, 0.97);
+	--bubble-light: rgba(108, 184, 198, 0.9);
+	--bubble-o-dark: rgba(76, 186, 147, 0.97);
+	--bubble-o-light: rgba(108, 198, 166, 0.9);
+	--bubble-w-dark: rgba(265, 163, 50, 0.97);
+	--bubble-w-light: rgba(255, 186, 102, 0.9);
+	--bubble-e-dark: rgba(186, 92, 76, 0.97);
+	--bubble-e-light: rgba(198, 122, 108, 0.9);
+    --bubble-u-bkg: rgba(255, 255, 255, 0.3);
+}
+
+body {
+    display: flex;
+    background: var(--bkg-body);
+    font-family: "Century Gothic", helvetica, arial, sans-serif;
+    font-size: 1.1em;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+* {
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+}
+
+form {
+	display: flex;
+	flex-direction: row;
+	background: #000;
+	padding: 3px;
+	position: fixed;
+	bottom: 0;
+	width: 100%;
+	height: 10%;
+}
+form textarea {
+	flex-grow: 9;
+	border: 0;
+	padding: 10px;
+	margin-right: 0.5%;
+	background-color: var(--bkg-textarea);
+	color: var(--bkg-body);
+}
+
+form button {
+	flex-grow: 1;
+	background: rgb(130, 224, 255);
+	border: none;
+	padding: 10px;
+}
+
+#messagingPanel {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: row;
+}
+
+#messages {
+	margin: 0;
+	padding: 0;
+}
+#messages div {
+	padding: 5px 10px;
+}
+
+.bubble{
+	display: inline-block;
+	width: 94%;
+	background-color: var(--bubble-dark);
+    background:-webkit-gradient(linear, 0 0, 0 100%, from(var(--bubble-dark)), to(var(--bubble-light)));
+    background:-moz-linear-gradient(var(--bubble-dark), var(--bubble-light));
+    background:-o-linear-gradient(var(--bubble-dark), var(--bubble-light));
+	background: linear-gradient(var(--bubble-dark),var(--bubble-light));
+	-webkit-box-shadow: 10px 10px 3px rgba(0,0,0,0.4);
+	-moz-box-shadow: 10px 10px 3px rgba(0,0,0,0.4);
+	box-shadow: 10px 10px 3px rgba(0,0,0,0.4);
+	margin-bottom: 10px;
+	border-radius: 10px;
+	margin-right: 20px;
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+
+.bubble-user{
+	display: table-cell;
+    background-color: var(--bubble-u-bkg);
+	width: 10%;
+	padding-left: 15px;
+    padding-right: 0px;
+    padding-bottom: 5px;
+    padding-top: 5px;
+    font-size: 13px;
+    vertical-align: middle;
+}
+
+.bubble-user.other{
+	padding-left: 0px;
+}
+
+.bubble-content{
+	display: table-cell;
+	width: 90%;
+    padding: 5px;
+    padding-left: 15px;
+    text-align: justify;
+    text-justify: inter-word;
+    vertical-align: middle;
+    color: var(--body);
+
+    font-family: monospace;
+	white-space: pre-wrap;
+}
+
+.bubble-spk {
+    display: flex;
+	float: right;
+	width: 70%;
+	-webkit-box-shadow: 10px 10px 3px rgba(0,0,0,0.4);
+	-moz-box-shadow: 10px 10px 3px rgba(0,0,0,0.4);
+	box-shadow: 10px 10px 3px rgba(0,0,0,0.4);
+	margin-bottom: 10px;
+	padding-left: 20px;
+	padding-right: 20px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+    border-radius:10px;
+    margin-right:50px;
+    position:relative;
+    color: var(--bubble-spk);
+    background:var(--bubble-dark); /* default background for browsers without gradient support */
+    /* css3 */
+    background:-webkit-gradient(linear, 0 0, 0 100%, from(var(--bubble-dark)), to(var(--bubble-light)));
+    background:-moz-linear-gradient(var(--bubble-dark), var(--bubble-light));
+    background:-o-linear-gradient(var(--bubble-dark), var(--bubble-light));
+    background:linear-gradient(var(--bubble-dark), var(--bubble-light));
+    -webkit-border-radius:10px;
+    -moz-border-radius:10px;
+    opacity: 0.9;
+    word-break: break-all;
+}
+
+.bubble-spk.other {
+   margin-left:50px;
+   float: left;
+   background:var(--bubble-o-dark); /* default background for browsers without gradient support */
+   background:-webkit-gradient(linear, 0 0, 0 100%, from(var(--bubble-o-dark)), to(var(--bubble-o-light)));
+   background:-moz-linear-gradient(var(--bubble-o-dark), var(--bubble-o-light));
+   background:-o-linear-gradient(var(--bubble-o-dark), var(--bubble-o-light));
+   background:linear-gradient(var(--bubble-o-dark), var(--bubble-o-light));
+   flex-direction: row-reverse;
+}
+
+.bubble-spk:after {
+    display: block;
+    content:"";
+    position:absolute;
+    bottom:-15px; /* value = - border-top-width - border-bottom-width */
+    left:50px; /* controls horizontal position */
+    border-width:15px 15px 0; /* vary these values to change the angle of the vertex */
+    border-style:solid;
+    border-color:var(--bubble-dark) transparent;
+    width:0;
+    top:16px; /* controls vertical position */
+    right:-50px; /* value = - border-left-width - border-right-width */
+    bottom:auto;
+    left:auto;
+    border-width:10px 0 10px 50px;
+    border-color:transparent var(--bubble-dark);
+}
+
+.bubble-spk.other:after {
+    top:16px; /* controls vertical position */
+    left:-50px; /* value = - border-left-width - border-right-width */
+    bottom:auto;
+    border-width:10px 50px 10px 0;
+    border-color:transparent var(--bubble-o-dark);
+}
+
+.bubble-spk:hover {
+	box-shadow: inset 0 0 100px 100px rgba(200, 200, 255, 0.2);
+}
+
+img.bubble-image {
+	max-width: 200px;
+	max-height: 200px;
+}

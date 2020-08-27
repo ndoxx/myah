@@ -74,7 +74,7 @@ module.exports = class PostSystem
 
     getLastPosts(count)
     {
-        const SQL_GET_POSTS = `SELECT * FROM posts ORDER BY id DESC LIMIT ?`;
+        const SQL_GET_POSTS = `SELECT * FROM posts ORDER BY id LIMIT ?`;
         try
         {
             const stmt = this.db.prepare(SQL_GET_POSTS);

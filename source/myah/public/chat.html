@@ -4,6 +4,11 @@
         <script src="/socket.io/socket.io.js"></script>
         <script src="/static/js/jquery.min.js"></script>
         <script src="/static/js/js.cookie.min.js"></script>
+        <script src="/static/js/linkify.min.js"></script>
+        <script src="/static/js/linkify-jquery.min.js"></script>
+        <script src="/static/js/mustache.min.js"></script>
+        <script src="/static/js/chat.js"></script>
+        <link class="mainSS" rel="stylesheet" href="static/css/chat.css" />
         <title>Myah!</title>
         <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -17,37 +22,11 @@
         </style>
     </head>
     <body>
-        <ul id="messages"></ul>
-        <form action="">
-            <input id="m" autocomplete="off" /><button>Send</button>
-        </form>
-        <script>
-            $(function() {
-                const createHandshakeQuery = () => { return {username : username, token : Cookies.get('auth_token')}; }
-                const username = Cookies.get('username');
-                const socket = io({query : createHandshakeQuery(), rejectUnauthorized : false});
-
-                $('form').submit((e) => {
-                    e.preventDefault(); // prevents page reloading
-                    socket.emit('chat/message', {username : username, payload : $('#m').val()});
-                    $('#m').val('');
-                    return false;
-                });
-                socket.on('chat/message', (pkt) => { $('#messages').prepend($('<li>').text(`${pkt.username}> ${pkt.payload}`)); });
-                socket.on('chat/history', (pkt) => {
-                    $('#messages').html('');
-                    pkt.history.forEach((msg) => { $('#messages').append($('<li>').text(`${msg.username}> ${msg.payload}`)); });
-                });
-                socket.on('connect', () => {
-                    socket.emit('chat/get', {last : 50}); // Retrieve last 50 posts
-                    console.log(`connected, socket ID: ${socket.id}`);
-                });
-                socket.on('reconnect_attempt', () => {
-                    socket.io.opts.query = createHandshakeQuery();
-                    console.log('attempting to reconnect');
-                });
-                socket.on('error', (err) => { console.error(err); });
-            });
-        </script>
+        <div class="messagingPanel">
+            <div id="messages"></div>
+            <form action="">
+                <textarea id="m" autocomplete="off"></textarea><button id="btnSend">Send</button>
+            </form>
+        </div>
     </body>
 </html>

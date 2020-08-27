@@ -175,7 +175,7 @@ io.on('connection', (socket) => {
         // Send base64 decoded messages back to client
         const out = {history : []};
         posts.forEach(function(
-            msg) { out.history.push({username : names.get(msg.userid), payload : base64decode(msg.body)}); });
+            msg) { out.history.push({username : names.get(msg.userid), payload : base64decode(msg.body), timestamp : msg.timestamp}); });
 
         io.to(socket.id).emit(MSG_CHAT_HISTORY, out);
     });
