@@ -1,5 +1,7 @@
 'use strict';
 
+const FILE_SLICE_SIZE_B = 100000;
+
 let socket;
 let logged_in_as = '';
 let imgcount = 0;
@@ -33,6 +35,7 @@ $(function() {
     });
     socket.on('error', (err) => { console.error(err); });
 
+    setupFileDnD();
     setupFileTransfer();
 
     // Events
@@ -184,7 +187,7 @@ function notifyMe(sender, message)
     }
 }
 
-function setupFileTransfer()
+function setupFileDnD()
 {
     $("#dropzone").hide();
 
@@ -221,4 +224,62 @@ function uploadFiles(files)
 {
     console.log(`Beginning file transfer:`);
     console.log(files);
+
+    for(var ii=0; ii<files.length; ++ii)
+    {
+        (function(file) {
+            if(file.name.length <= 255)
+                sendFile(file);
+        })(files[ii]);
+    }
+}
+
+const fileTransferTasks = new Map();
+
+function sendFile(file)
+{
+    const fileReader = new FileReader();
+    const slice = file.slice(0, FILE_SLICE_SIZE_B);
+
+    if(!fileTransferTasks.has(file.name))
+    {
+        fileTransferTasks.set(file.name, {
+            file: file,
+            reader: fileReader
+        });
+    }
+
+    fileReader.readAsArrayBuffer(slice);
+    fileReader.onload = () => {
+        console.log(`Sending: ${file.name} - Size: ${file.size}B`);
+        const arrayBuffer = fileReader.result; 
+        socket.emit('upload/slice', { 
+            name: file.name, 
+            type: file.type, 
+            size: file.size, 
+            data: arrayBuffer
+        }); 
+    };
+    fileReader.onerror = (err) => {
+        console.error(err);
+    };
+}
+
+function setupFileTransfer()
+{
+    socket.on('upload/request/slice', (data) => { 
+        const place = data.currentSlice * FILE_SLICE_SIZE_B;
+        const task  = fileTransferTasks.get(data.name);
+        const slice = task.file.slice(place, place + Math.min(FILE_SLICE_SIZE_B, task.file.size - place)); 
+        
+        task.reader.readAsArrayBuffer(slice); 
+    });
+    socket.on('upload/end', (data) => { 
+        console.log(`File transfer complete for ${data.name}.`);
+        fileTransferTasks.delete(data.name);
+    });
+    socket.on('upload/error', (data) => { 
+        console.error(`Upload error for: ${data.name}.`);
+        fileTransferTasks.delete(data.name);
+    });
 }

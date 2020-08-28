@@ -4,6 +4,7 @@ const fs = require("fs");
 const path = require('path');
 const express = require("express");
 const cookie_parser = require('cookie-parser');
+const {v4 : uuidv4} = require('uuid');
 
 const PORT = 8090;
 const DATABASE_LOCATION = 'data/db/myah.sqlite';
@@ -13,11 +14,7 @@ const TLS_OPTIONS = {
     key : fs.readFileSync('data/key/privatekey.pem'),
     cert : fs.readFileSync('data/key/certificate.pem')
 };
-
-const MSG_CHAT_MESSAGE = 'chat/message';
-const MSG_CHAT_GET = 'chat/get';
-const MSG_CHAT_DELETE = 'chat/delete';
-const MSG_CHAT_HISTORY = 'chat/history';
+const FILE_SLICE_SIZE_B = 100000;
 
 const app = express();
 const server = require('https').createServer(TLS_OPTIONS, app);
@@ -29,6 +26,15 @@ const auth = new AuthenticationSystem(DATABASE_LOCATION, {verbose : true});
 const poster = new PostSystem(DATABASE_LOCATION, {verbose : true});
 const Users = new Map();
 const Sockets = new Map();
+
+const FileTransferTasks = {};
+const FileTransferData = {
+    name : null,
+    type : null,
+    size : 0,
+    data : [],
+    slice : 0,
+};
 
 app.use(cookie_parser());
 app.use(express.json());
@@ -156,16 +162,16 @@ io.on('connection', (socket) => {
         Sockets.delete(socket.id);
     });
 
-    socket.on(MSG_CHAT_MESSAGE, (pkt) => {
+    socket.on('chat/message', (pkt) => {
         // Set date, base64 encode, save to DB and broadcast
         pkt.timestamp = Date.now();
         const userid = Users.get(pkt.username).userid;
         const body_b64 = base64encode(pkt.payload);
         pkt.postid = poster.post(userid, pkt.timestamp, body_b64);
-        io.emit(MSG_CHAT_MESSAGE, pkt);
+        io.emit('chat/message', pkt);
     });
 
-    socket.on(MSG_CHAT_GET, (pkt) => {
+    socket.on('chat/get', (pkt) => {
         const posts = poster.getLastPosts(pkt.last);
         // Userid to name table
         const names = new Map();
@@ -175,17 +181,70 @@ io.on('connection', (socket) => {
         });
         // Send base64 decoded messages back to client
         const out = {history : []};
-        posts.forEach(function(
-            msg) { out.history.push({postid : msg.id, username : names.get(msg.userid), payload : base64decode(msg.body), timestamp : msg.timestamp}); });
+        posts.forEach(function(msg) {
+            out.history.push({
+                postid : msg.id,
+                username : names.get(msg.userid),
+                payload : base64decode(msg.body),
+                timestamp : msg.timestamp
+            });
+        });
 
-        io.to(socket.id).emit(MSG_CHAT_HISTORY, out);
+        io.to(socket.id).emit('chat/history', out);
     });
 
-    socket.on(MSG_CHAT_DELETE, (pkt) => {
+    socket.on('chat/delete', (pkt) => {
         // Check that this post belongs to the user requiring its deletion
         const username = Sockets.get(socket.id);
         if(poster.checkAuthor(Users.get(username).userid, pkt.postid))
             poster.deletePost(pkt.postid);
+    });
+
+    socket.on('upload/slice', (data) => {
+        if(!FileTransferTasks[data.name])
+        {
+            console.log(`Upload request for file: ${data.name} - ${data.type} - ${data.size}B`);
+            FileTransferTasks[data.name] = Object.assign({}, FileTransferData, data);
+            FileTransferTasks[data.name].data = [];
+        }
+
+        console.log(`> Receiving slice ${FileTransferTasks[data.name].slice} of file: ${data.name}`);
+
+        // convert the ArrayBuffer to Buffer
+        data.data = Buffer.from(new Uint8Array(data.data));
+        // save the data
+        FileTransferTasks[data.name].data.push(data.data);
+        FileTransferTasks[data.name].slice++;
+
+        if(FileTransferTasks[data.name].slice * FILE_SLICE_SIZE_B >= FileTransferTasks[data.name].size)
+        {
+            console.log(`File transfer complete for: ${data.name}`);
+
+            if(FileTransferTasks[data.name].slice * FILE_SLICE_SIZE_B >= FileTransferTasks[data.name].size)
+            {
+                const file_buffer = Buffer.concat(FileTransferTasks[data.name].data);
+                const local_name = `${uuidv4()}-${data.name}`;
+
+                fs.writeFile(path.join(__dirname, 'share', local_name), file_buffer, '', (err) => {
+                    delete FileTransferTasks[data.name];
+                    if(err)
+                    {
+                        console.error(`File write error for: ${local_name}`);
+                        socket.emit('upload/error', {name : data.name});
+                    }
+                    else
+                    {
+                        console.log(`File saved locally as: ${local_name}`);
+                        socket.emit('upload/end', {name : data.name});
+                    }
+                });
+            }
+        }
+        else
+        {
+            console.log(`< Requiring slice ${FileTransferTasks[data.name].slice} of file: ${data.name}`);
+            socket.emit('upload/request/slice', {name : data.name, currentSlice : FileTransferTasks[data.name].slice});
+        }
     });
 });
 
