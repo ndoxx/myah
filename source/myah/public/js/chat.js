@@ -4,6 +4,56 @@ let socket;
 let logged_in_as = '';
 let imgcount = 0;
 
+$(function() {
+    logged_in_as = Cookies.get('username');
+    const createHandshakeQuery = () => { return {username : logged_in_as, token : Cookies.get('auth_token')}; };
+    socket = io({query : createHandshakeQuery(), rejectUnauthorized : false});
+
+    $('#btnSend').click(() => {
+        socket.emit('chat/message', {username : logged_in_as, payload : $('#m').val()});
+        $('#m').val('');
+        return false;
+    });
+    socket.on('chat/message', (pkt) => {
+        displayMessage(pkt.postid, pkt.username, pkt.payload, pkt.timestamp);
+        if(pkt.username !== logged_in_as)
+            notifyMe(pkt.username, pkt.payload);
+    });
+    socket.on('chat/history', (pkt) => {
+        $('#messages').html('');
+        pkt.history.forEach((msg) => { displayMessage(msg.postid, msg.username, msg.payload, msg.timestamp); });
+    });
+    socket.on('connect', () => {
+        socket.emit('chat/get', {last : 50}); // Retrieve last 50 posts
+        console.log(`connected, socket ID: ${socket.id}`);
+    });
+    socket.on('reconnect_attempt', () => {
+        socket.io.opts.query = createHandshakeQuery();
+        console.log('attempting to reconnect');
+    });
+    socket.on('error', (err) => { console.error(err); });
+
+    setupFileTransfer();
+
+    // Events
+    $(document).keydown(function(e) {
+        switch(e.which)
+        {
+        case 13: // Shift+Enter: send text
+            if(e.shiftKey)
+            {
+                $('#btnSend').click();
+                e.preventDefault(); // prevent the default action (scroll / move caret)
+            }
+            break;
+        default:
+            return; // exit this handler for other keys
+        }
+    });
+});
+
+
+
 function displayMessage(postid, username, message, timestamp)
 {
     const other = (username !== logged_in_as);
@@ -134,47 +184,41 @@ function notifyMe(sender, message)
     }
 }
 
-$(function() {
-    logged_in_as = Cookies.get('username');
-    const createHandshakeQuery = () => { return {username : logged_in_as, token : Cookies.get('auth_token')}; };
-    socket = io({query : createHandshakeQuery(), rejectUnauthorized : false});
+function setupFileTransfer()
+{
+    $("#dropzone").hide();
 
-    $('#btnSend').click(() => {
-        socket.emit('chat/message', {username : logged_in_as, payload : $('#m').val()});
-        $('#m').val('');
-        return false;
+    //Prevent browser from displaying file on drag/drop
+    $("body").on('dragenter dragstart dragend dragleave dragover drag drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
     });
-    socket.on('chat/message', (pkt) => {
-        displayMessage(pkt.postid, pkt.username, pkt.payload, pkt.timestamp);
-        if(pkt.username !== logged_in_as)
-            notifyMe(pkt.username, pkt.payload);
+    $("#m").on('dragenter', function (e) {
+        const padding    = parseInt($("#controls").css("padding"));
+        const zonewidth  = parseInt($("#m").css("width")) - padding;
+        const zoneheight = parseInt($("#m").css("height")) - padding;
+        $("#dropzone").css("width", zonewidth);
+        $("#dropzone").css("height", zoneheight);
+        e.preventDefault();
+        e.stopPropagation();
+        $("#dropzone").show();
     });
-    socket.on('chat/history', (pkt) => {
-        $('#messages').html('');
-        pkt.history.forEach((msg) => { displayMessage(msg.postid, msg.username, msg.payload, msg.timestamp); });
+    $("#dropzone").on('dragleave', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $("#dropzone").hide();
     });
-    socket.on('connect', () => {
-        socket.emit('chat/get', {last : 50}); // Retrieve last 50 posts
-        console.log(`connected, socket ID: ${socket.id}`);
+    $("#dropzone").on('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $("#dropzone").hide();
+        if(e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files.length)
+            uploadFiles(e.originalEvent.dataTransfer.files);
     });
-    socket.on('reconnect_attempt', () => {
-        socket.io.opts.query = createHandshakeQuery();
-        console.log('attempting to reconnect');
-    });
-    socket.on('error', (err) => { console.error(err); });
+}
 
-    $(document).keydown(function(e) {
-        switch(e.which)
-        {
-        case 13: // Shift+Enter: send text
-            if(e.shiftKey)
-            {
-                $('#btnSend').click();
-                e.preventDefault(); // prevent the default action (scroll / move caret)
-            }
-            break;
-        default:
-            return; // exit this handler for other keys
-        }
-    });
-});
+function uploadFiles(files)
+{
+    console.log(`Beginning file transfer:`);
+    console.log(files);
+}
