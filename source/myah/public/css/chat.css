@@ -12,6 +12,9 @@
 	--bubble-e-dark: rgba(186, 92, 76, 0.97);
 	--bubble-e-light: rgba(198, 122, 108, 0.9);
     --bubble-u-bkg: rgba(255, 255, 255, 0.3);
+
+	--prgbar-back: #000;
+	--prgbar-front: #00ccff;
 }
 
 body {
@@ -29,6 +32,21 @@ body {
 	box-sizing: border-box;
 }
 
+#dropzone {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	background: #ffa300;
+	width: 100px;
+	height: 100px;
+	font-size: 50px;
+	position: absolute;
+	top: 5px;
+	left: 5px;
+	z-index: 10;
+	opacity: 1.0;
+}
+
 #wrapper {
 	display: flex;
 	flex-direction: column;
@@ -39,12 +57,14 @@ body {
 	display: inline-block;
 	margin: 0;
 	padding: 0;
+	overflow-x: hidden;
 	overflow-y: scroll;
 	height: 90vh;
 }
 #controls {
 	display: flex;
 	flex-direction: row;
+	position: relative;
 	padding: 3px;
 	height: 9vh;
 }
@@ -67,7 +87,6 @@ body {
 
 .bubble{
 	display: inline-block;
-	width: 94%;
 	background-color: var(--bubble-dark);
     background:-webkit-gradient(linear, 0 0, 0 100%, from(var(--bubble-dark)), to(var(--bubble-light)));
     background:-moz-linear-gradient(var(--bubble-dark), var(--bubble-light));
@@ -85,6 +104,23 @@ body {
 	padding-right: 20px;
 	padding-top: 10px;
 	padding-bottom: 10px;
+}
+
+.bubble.error{
+	background-color: var(--bubble-w-dark);
+    background:-webkit-gradient(linear, 0 0, 0 100%, from(var(--bubble-e-dark)), to(var(--bubble-e-light)));
+    background:-moz-linear-gradient(var(--bubble-e-dark), var(--bubble-e-light));
+    background:-o-linear-gradient(var(--bubble-e-dark), var(--bubble-e-light));
+	background: linear-gradient(var(--bubble-e-dark),var(--bubble-e-light));
+}
+
+.bubble.notify{
+	background-color: var(--bubble-w-dark);
+    background:-webkit-gradient(linear, 0 0, 0 100%, from(var(--bubble-w-dark)), to(var(--bubble-w-light)));
+    background:-moz-linear-gradient(var(--bubble-w-dark), var(--bubble-w-light));
+    background:-o-linear-gradient(var(--bubble-w-dark), var(--bubble-w-light));
+	background: linear-gradient(var(--bubble-w-dark),var(--bubble-w-light));
+	width: 100%;
 }
 
 .bubble-user{
@@ -198,4 +234,42 @@ body {
 img.bubble-image {
 	max-width: 200px;
 	max-height: 200px;
+}
+
+.prgBar {
+	position: relative;
+	width: 100%;
+	height: 20px;
+}
+
+.prgBarBack {
+	background: var(--prgbar-back);
+	width: 100%;
+	height: 20px;
+	border-radius: 10px;
+}
+
+.prgBarFront {
+	background: var(--prgbar-front);
+	width: 33%;
+	height: 20px;
+	border-radius: 10px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 10;
+}
+
+.prgBarText {
+	color: #ffffff;
+	font-size: 18px;
+	font-weight: bold;
+	width: 200px;
+	height: 20px;
+	position: absolute;
+	top: 0;
+	left: 0;
+	z-index: 11;
+	text-align: center;
+	vertical-align: middle;
 }
