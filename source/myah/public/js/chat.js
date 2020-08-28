@@ -6,6 +6,8 @@ let socket;
 let logged_in_as = '';
 let imgcount = 0;
 
+const fileTransferTasks = new Map();
+
 $(function() {
     logged_in_as = Cookies.get('username');
     const createHandshakeQuery = () => { return {username : logged_in_as, token : Cookies.get('auth_token')}; };
@@ -220,54 +222,9 @@ function setupFileDnD()
     });
 }
 
-function uploadFiles(files)
-{
-    console.log(`Beginning file transfer:`);
-    console.log(files);
-
-    for(var ii=0; ii<files.length; ++ii)
-    {
-        (function(file) {
-            if(file.name.length <= 255)
-                sendFile(file);
-        })(files[ii]);
-    }
-}
-
-const fileTransferTasks = new Map();
-
-function sendFile(file)
-{
-    const fileReader = new FileReader();
-    const slice = file.slice(0, FILE_SLICE_SIZE_B);
-
-    if(!fileTransferTasks.has(file.name))
-    {
-        fileTransferTasks.set(file.name, {
-            file: file,
-            reader: fileReader
-        });
-    }
-
-    fileReader.readAsArrayBuffer(slice);
-    fileReader.onload = () => {
-        console.log(`Sending: ${file.name} - Size: ${file.size}B`);
-        const arrayBuffer = fileReader.result; 
-        socket.emit('upload/slice', { 
-            name: file.name, 
-            type: file.type, 
-            size: file.size, 
-            data: arrayBuffer
-        }); 
-    };
-    fileReader.onerror = (err) => {
-        console.error(err);
-    };
-}
-
 function setupFileTransfer()
 {
-    socket.on('upload/request/slice', (data) => { 
+    socket.on('upload/request/slice', (data) => {
         const place = data.currentSlice * FILE_SLICE_SIZE_B;
         const task  = fileTransferTasks.get(data.name);
         const slice = task.file.slice(place, place + Math.min(FILE_SLICE_SIZE_B, task.file.size - place)); 
@@ -283,3 +240,159 @@ function setupFileTransfer()
         fileTransferTasks.delete(data.name);
     });
 }
+
+function uploadFiles(files)
+{
+    console.log(`Beginning file transfer:`);
+    console.log(files);
+
+    for(var ii=0; ii<files.length; ++ii)
+    {
+        (function(file) {
+            if(file.name.length <= 255)
+                sendFile(file);
+        })(files[ii]);
+    }
+}
+
+function sendFile(file)
+{
+    console.log(`Sending: ${file.name} - Size: ${file.size}B`);
+    const fileReader = new FileReader();
+    const slice = file.slice(0, FILE_SLICE_SIZE_B);
+
+    if(!fileTransferTasks.has(file.name))
+    {
+        fileTransferTasks.set(file.name, {
+            file: file,
+            reader: fileReader,
+            progress: 0
+        });
+    }
+
+    fileReader.readAsArrayBuffer(slice);
+    fileReader.onload = () => {
+        const arrayBuffer = fileReader.result;
+        fileTransferTasks.get(file.name).progress += arrayBuffer.byteLength;
+        updateFileUploadProgress(logged_in_as, file.name, fileTransferTasks.get(file.name).progress, file.size);
+
+        socket.emit('upload/slice', {
+            user: logged_in_as,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data: arrayBuffer
+        }); 
+    };
+    fileReader.onerror = (err) => {
+        console.error(err);
+    };
+}
+
+function updateFileUploadProgress(username, filename, current_size, total_size)
+{
+    const progress = progressPercent(current_size, total_size);
+    const id = hashFnv32a(filename);
+    const found = $(`#messages>div#fp-${id}`);
+    if(found.length)
+    {
+        $(`#messages>div#fp-${id}>div>.prgBarFront`).css("width", progress+"%");
+        $(`#messages>div#fp-${id}>div>.prgBarText`).text(progress + "%");
+    }
+    else
+    {
+        const template =`
+        <div class="bubble notify" id="fp-{{id}}">{{username}} - uploading: {{filename}} ({{size}}B)
+            <div class="prgBar">
+                <div class="prgBarBack">&nbsp;</div>
+                <div class="prgBarFront">&nbsp;</div>
+                <div class="prgBarText">{{progress}}%</div>
+            </div>
+        </div>`;
+        const html = Mustache.render(template, {
+            id: id,
+            username: username,
+            filename: shortenFileName(filename, 50),
+            size: total_size,
+            progress: progress
+        });
+        $("#messages").prepend(html);
+    }
+}
+
+function progressPercent(current_size, total_size)
+{
+    return Math.round(100 * current_size / total_size);
+}
+
+function hashFnv32a(str, asString, seed)
+{
+    var i, l,
+        hval = (seed === undefined) ? 0x811c9dc5 : seed;
+
+    for (i = 0, l = str.length; i < l; i++) {
+        hval ^= str.charCodeAt(i);
+        hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
+    }
+    if( asString ){
+        // Convert to 8 digit hex string
+        return ("0000000" + (hval >>> 0).toString(16)).substr(-8);
+    }
+    return hval >>> 0;
+}
+
+function shortenFileName(fileName, maxlen)
+{
+    if (fileName.length > maxlen+3) {
+        const shortfileName = fileName.substring(0,maxlen-3);
+        fileName = fileName.replace(/(?:.*)\.(\w*)/g, shortfileName + '...$1');
+    }
+    return fileName;
+}
+
+/*
+case "file/prog":
+    //server side: {"action": u"file/prog", "user": username, "name": filename, "size": filesize, "id": namehash, "progress": 0}
+    //Get bubble if exists, create a new one if not
+    var $bubble = $('div#fp-' + e.id).length ? $('div#fp-' + e.id) : $('<div class="bubble notify" id="fp-' + e.id + '">' + e.user + ' - uploading: ' + LChat.shortenFileName(e.name, 50) + '(' + e.size + 'B)\
+                                                                            <div class="prgBar" id="pb-' + e.id + '">\
+                                                                            <div class="prgBarBack" id="pbb-' + e.id + '">&nbsp;</div>\
+                                                                            <div class="prgBarFront" id="pbf-' + e.id + '">&nbsp;</div>\
+                                                                            <div class="prgBarText" id="pbt-' + e.id + '">' + e.progress + '%\
+                                                                        </div>\
+                                                                        </div>').prependTo($("#message-container"));
+
+    $("div#pbf-" + e.id).css("width", parseInt(e.progress)+"%");
+    $("div#pbt-" + e.id).text(e.progress + "%");
+    break;
+
+case "file/done":
+    //server side: {"action": u"file/done", "user": username, "name": filename, "id": staticMsgDict[namehash], "url": fileurl}
+    $('div#fp-' + e.id).empty();
+    $('div#fp-' + e.id).html(e.user + ' - uploaded: ' + LChat.shortenFileName(e.name, 50) + '<br/><a href="' + e.url + '" download="' + e.name + '">[DOWNLOAD]</a>');
+    LChat.addFile(e.key, e.name, e.url);
+    break;
+
+
+function displayMessage(postid, username, message, timestamp)
+{
+    const other = (username !== logged_in_as);
+    const bubble_style = `bubble bubble-spk${(other ? ' other' : '')}`;
+    const bubble_user_style = `bubble-user${(other ? ' other' : '')}`;
+    const template = '<div id="{{postid}}" class="{{bubble_style}}"><div class="bubble-content">{{message}}</div><div class="{{bubble_user_style}}"><strong>{{username}}</strong><br/><small>{{date}}</small></div></div>';
+    const html = Mustache.render(template, {
+        postid : postid,
+        bubble_style : bubble_style,
+        bubble_user_style : bubble_user_style,
+        message : message,
+        username : username,
+        date : timestampToDateString(timestamp)
+    });
+    $("#messages").prepend(html);
+    $(`#messages>div#${postid}`).linkify();
+    parseImages($(`#messages>div#${postid}>div>a`));
+    setImageCallbacks($(`#messages>div#${postid}>div>img`));
+    decorate($(`#messages>div#${postid}`));
+}
+*/
+

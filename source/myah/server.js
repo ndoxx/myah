@@ -29,6 +29,7 @@ const Sockets = new Map();
 
 const FileTransferTasks = {};
 const FileTransferData = {
+    user : null,
     name : null,
     type : null,
     size : 0,
@@ -203,7 +204,7 @@ io.on('connection', (socket) => {
     socket.on('upload/slice', (data) => {
         if(!FileTransferTasks[data.name])
         {
-            console.log(`Upload request for file: ${data.name} - ${data.type} - ${data.size}B`);
+            console.log(`Upload request for file: ${data.name} - ${data.type} - ${data.size}B by user '${data.user}'`);
             FileTransferTasks[data.name] = Object.assign({}, FileTransferData, data);
             FileTransferTasks[data.name].data = [];
         }
