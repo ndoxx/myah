@@ -57,6 +57,7 @@ body {
 	display: inline-block;
 	margin: 0;
 	padding: 0;
+	overflow-x: hidden;
 	overflow-y: scroll;
 	height: 90vh;
 }
@@ -86,7 +87,6 @@ body {
 
 .bubble{
 	display: inline-block;
-	width: 94%;
 	background-color: var(--bubble-dark);
     background:-webkit-gradient(linear, 0 0, 0 100%, from(var(--bubble-dark)), to(var(--bubble-light)));
     background:-moz-linear-gradient(var(--bubble-dark), var(--bubble-light));
@@ -120,6 +120,7 @@ body {
     background:-moz-linear-gradient(var(--bubble-w-dark), var(--bubble-w-light));
     background:-o-linear-gradient(var(--bubble-w-dark), var(--bubble-w-light));
 	background: linear-gradient(var(--bubble-w-dark),var(--bubble-w-light));
+	width: 100%;
 }
 
 .bubble-user{

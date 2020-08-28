@@ -48,6 +48,7 @@ app.use('/static', (req, res, next) => {
         next();
 });
 app.use('/static', express.static(path.join(__dirname, 'public')));
+app.use('/share', express.static(path.join(__dirname, 'share')));
 
 // Routing
 app.get('/', (req, res) => { serveLoginPage(res); });
@@ -236,7 +237,7 @@ io.on('connection', (socket) => {
                     else
                     {
                         console.log(`File saved locally as: ${local_name}`);
-                        socket.emit('upload/end', {name : data.name});
+                        socket.emit('upload/end', {name : data.name, local : local_name});
                     }
                 });
             }
