@@ -24,12 +24,18 @@ body {
     font-size: 1.1em;
     flex-direction: column;
     min-height: 100vh;
+    overflow-y: hidden;
 }
 
 * {
 	margin: 0;
 	padding: 0;
 	box-sizing: border-box;
+}
+
+details:hover {
+	cursor: pointer;
+	cursor: hand;
 }
 
 #dropzone {
@@ -45,6 +51,7 @@ body {
 	left: 5px;
 	z-index: 10;
 	opacity: 1.0;
+	visibility: hidden;
 }
 
 #wrapper {
