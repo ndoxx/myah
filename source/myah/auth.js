@@ -13,18 +13,10 @@ module.exports = class AuthenticationSystem
 {
     constructor(db_location, options)
     {
-        if(options.verbose)
-        {
-            this.log = (text) => { console.log(text); };
-            this.logDB = (text) => { console.log(`\x1b[36m${text}\x1b[0m`); };
-            this.error = (text) => { console.error(`\x1b[31m${text}\x1b[0m`); };
-        }
-        else
-        {
-            this.log = () => {};
-            this.logDB = () => {};
-            this.error = () => {};
-        }
+        this.log   = (options.log   ? options.log   : () => {});
+        this.logDB = (options.logDB ? options.logDB : () => {});
+        this.error = (options.error ? options.error : () => {});
+        
         this.log("Launching authentication system...");
         this.initDatabase(db_location);
         this.log("done.");
