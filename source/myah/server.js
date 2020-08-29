@@ -159,7 +159,10 @@ io.use(function(socket, next) {
 });
 
 io.on('connection', (socket) => {
+    socket.broadcast.emit('user/connect', {username: Sockets.get(socket.id)});
+
     socket.on('disconnect', () => {
+        socket.broadcast.emit('user/disconnect', {username: Sockets.get(socket.id)});
         removeUser(Sockets.get(socket.id));
         Sockets.delete(socket.id);
     });
@@ -199,7 +202,10 @@ io.on('connection', (socket) => {
         // Check that this post belongs to the user requiring its deletion
         const username = Sockets.get(socket.id);
         if(poster.checkAuthor(Users.get(username).userid, pkt.postid))
+        {
+            socket.broadcast.emit('chat/remove', {postid: pkt.postid});
             poster.deletePost(pkt.postid);
+        }
     });
 
     socket.on('upload/slice', (data) => {
