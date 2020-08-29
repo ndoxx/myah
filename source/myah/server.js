@@ -14,16 +14,15 @@ const TLS_OPTIONS = {
     key : fs.readFileSync('data/key/privatekey.pem'),
     cert : fs.readFileSync('data/key/certificate.pem')
 };
-const FILE_SLICE_SIZE_B = 100000;
+const FILE_SLICE_MIN_SIZE_B = 100000;
+const FILE_SLICE_MAX_SIZE_B = 1000000;
 
-const app = express();
-const server = require('https').createServer(TLS_OPTIONS, app);
-const io = require("socket.io")(server);
+Math.clamp = (a, b, c) => { return Math.max(b,Math.min(a,c)); };
 
 const AuthenticationSystem = require('./auth.js');
 const PostSystem = require('./post.js');
-const auth = new AuthenticationSystem(DATABASE_LOCATION, {verbose : true});
-const poster = new PostSystem(DATABASE_LOCATION, {verbose : true});
+const Auth = new AuthenticationSystem(DATABASE_LOCATION, {verbose : true});
+const Poster = new PostSystem(DATABASE_LOCATION, {verbose : true});
 const Users = new Map();
 const Sockets = new Map();
 
@@ -34,8 +33,13 @@ const FileTransferData = {
     type : null,
     size : 0,
     data : [],
+    slice_size : FILE_SLICE_MIN_SIZE_B,
     slice : 0,
 };
+
+const app = express();
+const server = require('https').createServer(TLS_OPTIONS, app);
+const io = require("socket.io")(server);
 
 app.use(cookie_parser());
 app.use(express.json());
@@ -49,9 +53,8 @@ app.use('/static', (req, res, next) => {
 });
 app.use('/static', express.static(path.join(__dirname, 'public')));
 app.use('/share', express.static(path.join(__dirname, 'share')));
-
-// Routing
 app.get('/', (req, res) => { serveLoginPage(res); });
+
 app.post('/login', (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
@@ -77,13 +80,13 @@ app.post('/login', (req, res) => {
     if(do_return)
         return;
 
-    auth.authenticateUser(username, password).then(success => {
+    Auth.authenticateUser(username, password).then(success => {
         if(success)
         {
             console.log(`User '${username} authenticated.`);
             // Create short-lived token by default, make it long-lived if remember set to true
             const token_ttl = (remember === 'on') ? AUTH_TOKEN_TTL_S : AUTH_TOKEN_TTL_SHORT_LIVED_S;
-            const token = auth.createAuthenticationToken(username, token_ttl);
+            const token = Auth.createAuthenticationToken(username, token_ttl);
 
             res.cookie('username', username);
             res.cookie('auth_token', token);
@@ -103,7 +106,7 @@ app.post('/logout', (req, res) => {
 
     if(token && username)
     {
-        const decoded = auth.verifyAuthenticationToken(token);
+        const decoded = Auth.verifyAuthenticationToken(token);
         if(decoded && decoded.logged_in_as === username)
         {
             console.log(`User '${username}' logged out.`);
@@ -128,7 +131,7 @@ app.get('/chat', (req, res) => {
         return;
     }
 
-    const decoded = auth.verifyAuthenticationToken(token);
+    const decoded = Auth.verifyAuthenticationToken(token);
     if(decoded && decoded.logged_in_as === username)
     {
         console.log(`User '${username}' authenticated by token.`);
@@ -172,17 +175,17 @@ io.on('connection', (socket) => {
         pkt.timestamp = Date.now();
         const userid = Users.get(pkt.username).userid;
         const body_b64 = base64encode(pkt.payload);
-        pkt.postid = poster.post(userid, pkt.timestamp, body_b64);
+        pkt.postid = Poster.post(userid, pkt.timestamp, body_b64);
         io.emit('chat/message', pkt);
     });
 
     socket.on('chat/get', (pkt) => {
-        const posts = poster.getLastPosts(pkt.last);
+        const posts = Poster.getLastPosts(pkt.last);
         // Userid to name table
         const names = new Map();
         posts.forEach(function(msg) {
             if(!names.has(msg.userid))
-                names.set(msg.userid, auth.getUserName(msg.userid));
+                names.set(msg.userid, Auth.getUserName(msg.userid));
         });
         // Send base64 decoded messages back to client
         const out = {history : []};
@@ -201,10 +204,10 @@ io.on('connection', (socket) => {
     socket.on('chat/delete', (pkt) => {
         // Check that this post belongs to the user requiring its deletion
         const username = Sockets.get(socket.id);
-        if(poster.checkAuthor(Users.get(username).userid, pkt.postid))
+        if(Poster.checkAuthor(Users.get(username).userid, pkt.postid))
         {
             socket.broadcast.emit('chat/remove', {postid: pkt.postid});
-            poster.deletePost(pkt.postid);
+            Poster.deletePost(pkt.postid);
         }
     });
 
@@ -214,6 +217,7 @@ io.on('connection', (socket) => {
             console.log(`Upload request for file: ${data.name} - ${data.type} - ${data.size}B by user '${data.user}'`);
             FileTransferTasks[data.name] = Object.assign({}, FileTransferData, data);
             FileTransferTasks[data.name].data = [];
+            FileTransferTasks[data.name].slice_size = Math.clamp(FileTransferTasks[data.name].slice_size, FILE_SLICE_MIN_SIZE_B, FILE_SLICE_MAX_SIZE_B);
         }
 
         console.log(`> Receiving slice ${FileTransferTasks[data.name].slice} of file: ${data.name}`);
@@ -224,29 +228,26 @@ io.on('connection', (socket) => {
         FileTransferTasks[data.name].data.push(data.data);
         FileTransferTasks[data.name].slice++;
 
-        if(FileTransferTasks[data.name].slice * FILE_SLICE_SIZE_B >= FileTransferTasks[data.name].size)
+        if(FileTransferTasks[data.name].slice * FileTransferTasks[data.name].slice_size >= FileTransferTasks[data.name].size)
         {
             console.log(`File transfer complete for: ${data.name}`);
 
-            if(FileTransferTasks[data.name].slice * FILE_SLICE_SIZE_B >= FileTransferTasks[data.name].size)
-            {
-                const file_buffer = Buffer.concat(FileTransferTasks[data.name].data);
-                const local_name = `${uuidv4()}-${data.name}`;
+            const file_buffer = Buffer.concat(FileTransferTasks[data.name].data);
+            const local_name = `${uuidv4()}-${data.name}`;
 
-                fs.writeFile(path.join(__dirname, 'share', local_name), file_buffer, '', (err) => {
-                    delete FileTransferTasks[data.name];
-                    if(err)
-                    {
-                        console.error(`File write error for: ${local_name}`);
-                        socket.emit('upload/error', {name : data.name});
-                    }
-                    else
-                    {
-                        console.log(`File saved locally as: ${local_name}`);
-                        socket.emit('upload/end', {name : data.name, local : local_name});
-                    }
-                });
-            }
+            fs.writeFile(path.join(__dirname, 'share', local_name), file_buffer, '', (err) => {
+                delete FileTransferTasks[data.name];
+                if(err)
+                {
+                    console.error(`File write error for: ${local_name}`);
+                    socket.emit('upload/error', {name : data.name});
+                }
+                else
+                {
+                    console.log(`File saved locally as: ${local_name}`);
+                    socket.emit('upload/end', {name : data.name, local : local_name});
+                }
+            });
         }
         else
         {
@@ -258,6 +259,7 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => { console.log(`https://localhost:${PORT}`); });
 
+
 function handshake(handshake_query, socketid)
 {
     const username = handshake_query.username;
@@ -266,7 +268,7 @@ function handshake(handshake_query, socketid)
     console.log(`Beginning handshake for user '${username}'.`);
     if(token && username)
     {
-        const decoded = auth.verifyAuthenticationToken(token);
+        const decoded = Auth.verifyAuthenticationToken(token);
         if(decoded && decoded.logged_in_as === username)
         {
             addUser(username, socketid);
@@ -283,7 +285,7 @@ function addUser(username, socketid)
 {
     if(!Users.has(username))
     {
-        const userid = auth.getUserID(username);
+        const userid = Auth.getUserID(username);
         Users.set(username, {username : username, userid : userid, socketid : socketid});
         Sockets.set(socketid, username);
         console.log(`Added new user '${username}', userid: ${userid}.`);

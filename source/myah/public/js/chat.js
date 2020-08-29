@@ -1,3 +1,4 @@
+/* global Cookies, Mustache, io, linkify */
 'use strict';
 
 const FILE_SLICE_SIZE_B = 100000;
@@ -10,14 +11,10 @@ const fileTransferTasks = new Map();
 
 $(function() {
     logged_in_as = Cookies.get('username');
-    const createHandshakeQuery = () => { return {username : logged_in_as, token : Cookies.get('auth_token')}; };
+    const createHandshakeQuery = () => { return {username : Cookies.get('username'), token : Cookies.get('auth_token')}; };
     socket = io({query : createHandshakeQuery(), rejectUnauthorized : false});
 
-    $('#btnSend').click(() => {
-        socket.emit('chat/message', {username : logged_in_as, payload : $('#m').val()});
-        $('#m').val('');
-        return false;
-    });
+    // Socket events
     socket.on('chat/message', (pkt) => {
         displayMessage(pkt.postid, pkt.username, pkt.payload, pkt.timestamp);
         if(pkt.username !== logged_in_as)
@@ -46,11 +43,18 @@ $(function() {
     });
     socket.on('error', (err) => { console.error(err); });
 
-    setupFileDnD();
-    setupFileTransfer();
+    setupFileTransferSocketEvents();
 
-    // Events
-    $(document).keydown(function(e) {
+    // UI events
+    setupFileDnDUIEvents();
+
+    $('#btnSend').click(() => {
+        socket.emit('chat/message', {username : logged_in_as, payload : $('#m').val()});
+        $('#m').val('');
+        return false;
+    });
+
+    $('#m').keydown((e) => {
         switch(e.which)
         {
         case 13: // Shift+Enter: send text
@@ -71,8 +75,7 @@ function displayMessage(postid, username, message, timestamp)
     const other = (username !== logged_in_as);
     const bubble_style = `bubble bubble-spk${(other ? ' other' : '')}`;
     const bubble_user_style = `bubble-user${(other ? ' other' : '')}`;
-    const template =
-        '<div id="{{postid}}" class="{{bubble_style}}"><div class="bubble-content">{{message}}</div><div class="{{bubble_user_style}}"><strong>{{username}}</strong><br/><small>{{date}}</small></div></div>';
+    const template = '<div id="{{postid}}" class="{{bubble_style}}"><div class="bubble-content">{{message}}</div><div class="{{bubble_user_style}}"><strong>{{username}}</strong><br/><small>{{date}}</small></div></div>';
     const html = Mustache.render(template, {
         postid : postid,
         bubble_style : bubble_style,
@@ -142,8 +145,7 @@ function extractYoutubeVideoID(URL)
 {
     const yt_regex = /youtube.com\/watch\?v=([a-zA-Z0-9_-]{11})/;
     const match = yt_regex.exec(URL);
-    if(match)
-        return match[1];
+    if(match) return match[1];
     return null;
 }
 
@@ -184,8 +186,7 @@ function setImageCallbacks(selector)
 
 function decorate(selector)
 {
-    if(selector.hasClass("other"))
-        return;
+    if(selector.hasClass("other")) return;
 
     const postid = selector.attr('id');
     selector.prepend(`<div class="bubble-cross" id="${postid}">&#10008;</div>`);
@@ -198,8 +199,7 @@ function decorate(selector)
 function getFileExtension(filename)
 {
     var dot = filename.lastIndexOf(".");
-    if(dot == -1)
-        return "";
+    if(dot == -1) return "";
     var extension = filename.substr(dot, filename.length);
     return extension;
 }
@@ -207,17 +207,13 @@ function getFileExtension(filename)
 function notifyMe(sender, message)
 {
     // Does the browser support notifications?
-    if(!("Notification" in window))
-        return;
+    if(!("Notification" in window)) return;
 
     // Find first link in message if any
     const links = linkify.find(message);
     const linkhref = (links.length != 0) ? links[0].href : '';
     const caption = `[${sender}] ${message.substring(0, 25)}`;
-
-    const options =
-        {data : {href : linkhref}, lang : 'fr-FR', icon : '/static/img/favicon-32x32.png', timestamp : Date.now()};
-
+    const options = {data : {href : linkhref}, lang : 'fr-FR', icon : '/static/img/favicon-32x32.png', timestamp : Date.now()};
     let notification = undefined;
 
     // Check permission
@@ -225,7 +221,7 @@ function notifyMe(sender, message)
         notification = new Notification(caption, options);
     else if(Notification.permission !== 'denied')
     {
-        Notification.requestPermission(function(permission) {
+        Notification.requestPermission((permission) => {
             // Store permission information
             if(!('permission' in Notification))
                 Notification.permission = permission;
@@ -240,7 +236,7 @@ function notifyMe(sender, message)
     {
         if(linkhref !== "")
         {
-            notification.addEventListener('click', function() {
+            notification.addEventListener('click', () => {
                 window.open(linkhref);
                 notification.close();
             });
@@ -251,14 +247,14 @@ function notifyMe(sender, message)
     }
 }
 
-function setupFileDnD()
+function setupFileDnDUIEvents()
 {
     // Prevent browser from displaying file on drag/drop
-    $("body").on('dragenter dragstart dragend dragleave dragover drag drop', function(e) {
+    $("body").on('dragenter dragstart dragend dragleave dragover drag drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
     });
-    $("#m").on('dragenter', function(e) {
+    $("#m").on('dragenter', (e) => {
         const padding = parseInt($("#controls").css("padding"));
         const zonewidth = parseInt($("#m").css("width")) - padding;
         const zoneheight = parseInt($("#m").css("height")) - padding;
@@ -268,12 +264,12 @@ function setupFileDnD()
         e.stopPropagation();
         $("#dropzone").css("visibility", "visible");
     });
-    $("#dropzone").on('dragleave', function(e) {
+    $("#dropzone").on('dragleave', (e) => {
         e.preventDefault();
         e.stopPropagation();
         $("#dropzone").css("visibility", "hidden");
     });
-    $("#dropzone").on('drop', function(e) {
+    $("#dropzone").on('drop', (e) => {
         e.preventDefault();
         e.stopPropagation();
         $("#dropzone").css("visibility", "hidden");
@@ -282,13 +278,12 @@ function setupFileDnD()
     });
 }
 
-function setupFileTransfer()
+function setupFileTransferSocketEvents()
 {
     socket.on('upload/request/slice', (data) => {
         const place = data.currentSlice * FILE_SLICE_SIZE_B;
         const task = fileTransferTasks.get(data.name);
         const slice = task.file.slice(place, place + Math.min(FILE_SLICE_SIZE_B, task.file.size - place));
-
         task.reader.readAsArrayBuffer(slice);
     });
     socket.on('upload/end', (data) => {
@@ -299,7 +294,7 @@ function setupFileTransfer()
         bubble.animate({"opacity" : "0"}, 500);
         setTimeout(() => {
             bubble.remove();
-            // NOTE(ndoxx): I'm unable to make Linkify match these kind of URLs, so I
+            // NOTE(ndoxx): I'm unable to make Linkify match these kind of URLs reliably, so I
             // perform ad hoc tagging here in order to regex match in displayMessage()
             const post = `!![link href="/share/${data.local}" value="${data.name}"]`;
             socket.emit('chat/message', {username : logged_in_as, payload : post});
@@ -332,17 +327,14 @@ function sendFile(file)
     const slice = file.slice(0, FILE_SLICE_SIZE_B);
 
     if(!fileTransferTasks.has(file.name))
-    {
         fileTransferTasks.set(file.name, {file : file, reader : fileReader, progress : 0});
-    }
 
     fileReader.readAsArrayBuffer(slice);
     fileReader.onload = () => {
         const arrayBuffer = fileReader.result;
         fileTransferTasks.get(file.name).progress += arrayBuffer.byteLength;
         updateFileUploadProgress(logged_in_as, file.name, fileTransferTasks.get(file.name).progress, file.size);
-
-        socket.emit('upload/slice', {user : logged_in_as, name : file.name, type : file.type, size : file.size, data : arrayBuffer});
+        socket.emit('upload/slice', {user : logged_in_as, name : file.name, type : file.type, size : file.size, data : arrayBuffer, slice_size : FILE_SLICE_SIZE_B});
     };
     fileReader.onerror = (err) => { console.error(err); };
 }
@@ -359,14 +351,7 @@ function updateFileUploadProgress(username, filename, current_size, total_size)
     }
     else
     {
-        const template = `
-        <div class="bubble notify" id="fp-{{id}}">{{username}} - uploading: {{filename}} ({{size}}B)
-            <div class="prgBar">
-                <div class="prgBarBack">&nbsp;</div>
-                <div class="prgBarFront">&nbsp;</div>
-                <div class="prgBarText">{{progress}}%</div>
-            </div>
-        </div>`;
+        const template = `<div class="bubble notify" id="fp-{{id}}">{{username}} - uploading: {{filename}} ({{size}}B)<div class="prgBar"><div class="prgBarBack">&nbsp;</div><div class="prgBarFront">&nbsp;</div><div class="prgBarText">{{progress}}%</div></div></div>`;
         const html = Mustache.render(template, {
             id : id,
             username : username,
@@ -389,11 +374,8 @@ function hashFnv32a(str, asString, seed)
         hval ^= str.charCodeAt(i);
         hval += (hval << 1) + (hval << 4) + (hval << 7) + (hval << 8) + (hval << 24);
     }
-    if(asString)
-    {
-        // Convert to 8 digit hex string
+    if(asString) // Convert to 8 digit hex string
         return ("0000000" + (hval >>> 0).toString(16)).substr(-8);
-    }
     return hval >>> 0;
 }
 
