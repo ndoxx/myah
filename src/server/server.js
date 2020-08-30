@@ -65,7 +65,7 @@ app.use('/static', (req, res, next) => {
     else
         next();
 });
-app.use('/static', express.static(path.join(__dirname, 'public')));
+app.use('/static', express.static(path.join(__dirname, '../public')));
 app.use('/share', express.static(path.join(__dirname, 'share')));
 app.get('/', (req, res) => { serveLoginPage(res); });
 
@@ -334,9 +334,9 @@ function removeUser(username)
 
 function serveStatus(res, sta, message) { res.status(sta).end(`<h1>${sta}</h1> <h2>${message}</h2>`); }
 
-function serveLoginPage(res) { res.sendFile(path.join(__dirname, 'public/login.html')); }
+function serveLoginPage(res) { res.sendFile(path.join(__dirname, '../public/login.html')); }
 
-function serveChatPage(res) { res.sendFile(path.join(__dirname, 'public/chat.html')); }
+function serveChatPage(res) { res.sendFile(path.join(__dirname, '../public/chat.html')); }
 
 function base64encode(str) { return Buffer.from(str, 'utf8').toString('base64'); }
 

@@ -2,10 +2,12 @@
 	"folders":
 	[
 		{
-			"name": "Myah-dev",
-			"path": "source",
-			"file_exclude_patterns": ["package-lock.json"],
-			"folder_exclude_patterns": ["node_modules","data"],
+			"name": "Backend",
+			"path": "src/server"
+		},
+		{
+			"name": "Frontend",
+			"path": "src/public"
 		},
 		{
 			"name": "Scripts",

@@ -1,11 +1,12 @@
 #!/bin/sh
-cd source/back
-npm init -y
-sudo npm install -g eslint
-npm install jest --save-dev
-npm install bcrypt better-sqlite3 jsonwebtoken uuid socket.io express cookie-parser
+# npm init -y
+# sudo npm install -g eslint
+# npm install --save-dev jest
+# npm install --save-dev webpack webpack-cli webpack-dev-server webpack-node-externals html-loader html-webpack-plugin css-loader file-loader style-loader
+# npm install bcrypt better-sqlite3 jsonwebtoken uuid socket.io express cookie-parser
 
 # Generate a private and a public RSA key for use with JWT
+cd src/server
 mkdir data; cd data
 mkdir key; cd key
 ssh-keygen -t rsa -b 4096 -m PEM -f jwtRS256.key -q -N ""
