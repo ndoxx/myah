@@ -9,19 +9,19 @@ describe("The post system", () => {
         expect(last_post.body).toEqual('Plip');
     });
 
-    test("should be able to retrieve the last posts in descending order", () => {
+    test("should be able to retrieve the last posts in ascending order", () => {
         poster.post(1, Date.now(), 'Plop');
         poster.post(1, Date.now(), 'Plup');
         const last_posts = poster.getLastPosts(10);
         expect(last_posts.length).toEqual(3);
-        expect(last_posts[0].body).toEqual('Plup');
+        expect(last_posts[0].body).toEqual('Plip');
     });
 
     test("should delete a post when asked to", () => {
         poster.deletePost(1);
         const last_posts = poster.getLastPosts(10);
         expect(last_posts.length).toEqual(2);
-        expect(last_posts[1].body).toEqual('Plop');
+        expect(last_posts[1].body).toEqual('Plup');
     });
 
     test("should be able to delete all posts", () => {

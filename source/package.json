@@ -4,7 +4,8 @@
   "description": "Local area messaging system",
   "main": "server.js",
   "scripts": {
-    "test": "jest --verbose"
+    "test": "jest --verbose",
+    "start": "PORT=8090 VERBOSITY=verbose node server.js"
   },
   "keywords": [],
   "author": "ndx",
