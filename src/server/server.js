@@ -1,12 +1,25 @@
 'use strict';
 
+// Env
+// Check production / development mode
+const PRODUCTION = (process.env.NODE_ENV === 'production');
+// Check if PORT environment variable has been set, if not, use fallback
+const PORT = (process.env.PORT || 8080);
+// Check verbosity
+const VERBOSE = (process.env.VERBOSITY === 'verbose');
+const log__    = (VERBOSE ? (text) => { console.log(text); } : () => {});
+const error__  = (VERBOSE ? (text) => { console.error(`\x1b[31m${text}\x1b[0m`); } : () => {});
+const log_db__ = (VERBOSE ? (text) => { console.log(`\x1b[36m${text}\x1b[0m`); } : () => {});
+// Change visible process title (as output by 'ps a')
+process.title = (PRODUCTION ? 'node-myah' : 'node-myah-dev');
+
+
 const fs = require("fs");
 const path = require('path');
 const express = require("express");
 const cookie_parser = require('cookie-parser');
 const {v4 : uuidv4} = require('uuid');
 
-const PORT = 8090;
 const DATABASE_LOCATION = 'data/db/myah.sqlite';
 const AUTH_TOKEN_TTL_S = 60 * 60 * 24 * 7;
 const AUTH_TOKEN_TTL_SHORT_LIVED_S = 60 * 5;
@@ -21,8 +34,8 @@ Math.clamp = (a, b, c) => { return Math.max(b,Math.min(a,c)); };
 
 const AuthenticationSystem = require('./auth.js');
 const PostSystem = require('./post.js');
-const Auth = new AuthenticationSystem(DATABASE_LOCATION, {verbose : true});
-const Poster = new PostSystem(DATABASE_LOCATION, {verbose : true});
+const Auth = new AuthenticationSystem(DATABASE_LOCATION, {log: log__, logDB: log_db__, error: error__});
+const Poster = new PostSystem(DATABASE_LOCATION, {log: log__, logDB: log_db__, error: error__});
 const Users = new Map();
 const Sockets = new Map();
 
@@ -37,6 +50,7 @@ const FileTransferData = {
     slice : 0,
 };
 
+// App
 const app = express();
 const server = require('https').createServer(TLS_OPTIONS, app);
 const io = require("socket.io")(server);
@@ -51,7 +65,7 @@ app.use('/static', (req, res, next) => {
     else
         next();
 });
-app.use('/static', express.static(path.join(__dirname, 'public')));
+app.use('/static', express.static(path.join(__dirname, '../public')));
 app.use('/share', express.static(path.join(__dirname, 'share')));
 app.get('/', (req, res) => { serveLoginPage(res); });
 
@@ -62,7 +76,7 @@ app.post('/login', (req, res) => {
 
     if(!username || !password)
     {
-        console.log('username or password empty. Cannot authenticate.');
+        log__('username or password empty. Cannot authenticate.');
         serveStatus(res, 401, 'Authentication failed.');
         return;
     }
@@ -72,7 +86,7 @@ app.post('/login', (req, res) => {
     Users.forEach(function(user) {
         if(user.username === username)
         {
-            console.log(`User '${username} already connected.`);
+            log__(`User '${username} already connected.`);
             serveStatus(res, 401, 'Unauthorized access.');
             do_return = true;
         }
@@ -83,7 +97,7 @@ app.post('/login', (req, res) => {
     Auth.authenticateUser(username, password).then(success => {
         if(success)
         {
-            console.log(`User '${username} authenticated.`);
+            log__(`User '${username} authenticated.`);
             // Create short-lived token by default, make it long-lived if remember set to true
             const token_ttl = (remember === 'on') ? AUTH_TOKEN_TTL_S : AUTH_TOKEN_TTL_SHORT_LIVED_S;
             const token = Auth.createAuthenticationToken(username, token_ttl);
@@ -94,7 +108,7 @@ app.post('/login', (req, res) => {
         }
         else
         {
-            console.log(`User '${username}' failed to authenticate.`);
+            log__(`User '${username}' failed to authenticate.`);
             serveStatus(res, 401, 'Authentication failed.');
         }
     });
@@ -109,15 +123,15 @@ app.post('/logout', (req, res) => {
         const decoded = Auth.verifyAuthenticationToken(token);
         if(decoded && decoded.logged_in_as === username)
         {
-            console.log(`User '${username}' logged out.`);
+            log__(`User '${username}' logged out.`);
             disconnectUser(username);
             serveLoginPage(res);
         }
         else
-            console.error(`Tried to logout user '${username}' with invalid token.`);
+            error__(`Tried to logout user '${username}' with invalid token.`);
     }
     else
-        console.error(`Tried to logout user '${username}' with empty token.`);
+        error__(`Tried to logout user '${username}' with empty token.`);
 });
 
 app.get('/chat', (req, res) => {
@@ -126,7 +140,7 @@ app.get('/chat', (req, res) => {
 
     if(!token || !username)
     {
-        console.log('username or token empty. Cannot authenticate.');
+        log__('username or token empty. Cannot authenticate.');
         serveLoginPage(res);
         return;
     }
@@ -134,12 +148,12 @@ app.get('/chat', (req, res) => {
     const decoded = Auth.verifyAuthenticationToken(token);
     if(decoded && decoded.logged_in_as === username)
     {
-        console.log(`User '${username}' authenticated by token.`);
+        log__(`User '${username}' authenticated by token.`);
         serveChatPage(res);
     }
     else
     {
-        console.log(`User '${username}' failed to authenticate.`);
+        log__(`User '${username}' failed to authenticate.`);
         serveLoginPage(res);
     }
 });
@@ -156,7 +170,7 @@ io.use(function(socket, next) {
     }
     catch(err)
     {
-        console.error(err.message);
+        error__(err.message);
     }
     next(new Error('Authentication error, handshake failed.'));
 });
@@ -214,13 +228,13 @@ io.on('connection', (socket) => {
     socket.on('upload/slice', (data) => {
         if(!FileTransferTasks[data.name])
         {
-            console.log(`Upload request for file: ${data.name} - ${data.type} - ${data.size}B by user '${data.user}'`);
+            log__(`Upload request for file: ${data.name} - ${data.type} - ${data.size}B by user '${data.user}'`);
             FileTransferTasks[data.name] = Object.assign({}, FileTransferData, data);
             FileTransferTasks[data.name].data = [];
             FileTransferTasks[data.name].slice_size = Math.clamp(FileTransferTasks[data.name].slice_size, FILE_SLICE_MIN_SIZE_B, FILE_SLICE_MAX_SIZE_B);
         }
 
-        console.log(`> Receiving slice ${FileTransferTasks[data.name].slice} of file: ${data.name}`);
+        log__(`> Receiving slice ${FileTransferTasks[data.name].slice} of file: ${data.name}`);
 
         // convert the ArrayBuffer to Buffer
         data.data = Buffer.from(new Uint8Array(data.data));
@@ -230,7 +244,7 @@ io.on('connection', (socket) => {
 
         if(FileTransferTasks[data.name].slice * FileTransferTasks[data.name].slice_size >= FileTransferTasks[data.name].size)
         {
-            console.log(`File transfer complete for: ${data.name}`);
+            log__(`File transfer complete for: ${data.name}`);
 
             const file_buffer = Buffer.concat(FileTransferTasks[data.name].data);
             const local_name = `${uuidv4()}-${data.name}`;
@@ -239,25 +253,25 @@ io.on('connection', (socket) => {
                 delete FileTransferTasks[data.name];
                 if(err)
                 {
-                    console.error(`File write error for: ${local_name}`);
+                    error__(`File write error for: ${local_name}`);
                     socket.emit('upload/error', {name : data.name});
                 }
                 else
                 {
-                    console.log(`File saved locally as: ${local_name}`);
+                    log__(`File saved locally as: ${local_name}`);
                     socket.emit('upload/end', {name : data.name, local : local_name});
                 }
             });
         }
         else
         {
-            console.log(`< Requiring slice ${FileTransferTasks[data.name].slice} of file: ${data.name}`);
+            log__(`< Requiring slice ${FileTransferTasks[data.name].slice} of file: ${data.name}`);
             socket.emit('upload/request/slice', {name : data.name, currentSlice : FileTransferTasks[data.name].slice});
         }
     });
 });
 
-server.listen(PORT, () => { console.log(`https://localhost:${PORT}`); });
+server.listen(PORT, () => { log__(`https://localhost:${PORT}`); });
 
 
 function handshake(handshake_query, socketid)
@@ -265,19 +279,19 @@ function handshake(handshake_query, socketid)
     const username = handshake_query.username;
     const token = handshake_query.token;
 
-    console.log(`Beginning handshake for user '${username}'.`);
+    log__(`Beginning handshake for user '${username}'.`);
     if(token && username)
     {
         const decoded = Auth.verifyAuthenticationToken(token);
         if(decoded && decoded.logged_in_as === username)
         {
             addUser(username, socketid);
-            console.log(`Associated user '${username}' to socket ID '${socketid}'`);
+            log__(`Associated user '${username}' to socket ID '${socketid}'`);
             return true;
         }
     }
 
-    console.error(`Failed to associate user '${username}' with token '${token}'.`);
+    error__(`Failed to associate user '${username}' with token '${token}'.`);
     return false;
 }
 
@@ -288,7 +302,7 @@ function addUser(username, socketid)
         const userid = Auth.getUserID(username);
         Users.set(username, {username : username, userid : userid, socketid : socketid});
         Sockets.set(socketid, username);
-        console.log(`Added new user '${username}', userid: ${userid}.`);
+        log__(`Added new user '${username}', userid: ${userid}.`);
     }
 }
 
@@ -300,11 +314,11 @@ function disconnectUser(username)
         if(io.sockets.connected[user.socketid])
         {
             io.sockets.connected[user.socketid].disconnect();
-            console.log(`User '${username}' disconnected.`);
+            log__(`User '${username}' disconnected.`);
         }
     }
     else
-        console.error(`Tried to disconnect unknown user: ${username}`);
+        error__(`Tried to disconnect unknown user: ${username}`);
 }
 
 function removeUser(username)
@@ -312,17 +326,17 @@ function removeUser(username)
     if(Users.has(username))
     {
         Users.delete(username);
-        console.log(`Removed user '${username}'.`);
+        log__(`Removed user '${username}'.`);
     }
     else
-        console.error(`Tried to remove unknown user: ${username}`);
+        error__(`Tried to remove unknown user: ${username}`);
 }
 
 function serveStatus(res, sta, message) { res.status(sta).end(`<h1>${sta}</h1> <h2>${message}</h2>`); }
 
-function serveLoginPage(res) { res.sendFile(path.join(__dirname, 'public/login.html')); }
+function serveLoginPage(res) { res.sendFile(path.join(__dirname, '../public/login.html')); }
 
-function serveChatPage(res) { res.sendFile(path.join(__dirname, 'public/chat.html')); }
+function serveChatPage(res) { res.sendFile(path.join(__dirname, '../public/chat.html')); }
 
 function base64encode(str) { return Buffer.from(str, 'utf8').toString('base64'); }
 

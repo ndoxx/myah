@@ -1,0 +1,32 @@
+{
+  "name": "myah",
+  "version": "0.0.1",
+  "description": "Single room LAN chat application",
+  "main": "src/server/server.js",
+  "scripts": {
+    "test": "cd src/server; jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ndoxx/myah.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ndoxx/myah/issues"
+  },
+  "homepage": "https://github.com/ndoxx/myah#readme",
+  "dependencies": {
+    "bcrypt": "^5.0.0",
+    "better-sqlite3": "^7.1.0",
+    "cookie-parser": "^1.4.5",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "socket.io": "^2.3.0",
+    "uuid": "^8.3.0"
+  },
+  "devDependencies": {
+    "jest": "^26.4.2"
+  }
+}
