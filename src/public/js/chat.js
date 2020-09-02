@@ -129,7 +129,7 @@ function parseYoutubeVideo(selector)
         const video_id = extractYoutubeVideoID(this.href);
         if(video_id)
         {
-            const template = `<details><summary>{{summary}}</summary><a href="{{orig_url}}" target="_blank">{{orig_url}}</a><object style="width: 640px; height: 480px; float: none; clear: both; margin: 2px auto;"data="https://www.youtube.com/embed/{{vid}}?autoplay={{autoplay}}"></object></details>`;
+            const template = `<details><summary>{{summary}}</summary><a href="{{orig_url}}" target="_blank">{{orig_url}}</a><br/><object style="width: 640px; height: 480px; float: none; clear: both; margin: 2px auto;"data="https://www.youtube.com/embed/{{vid}}?autoplay={{autoplay}}"></object></details>`;
             const html = Mustache.render(template, {
                 summary: `youtube/${video_id}`,
                 orig_url: this.href,

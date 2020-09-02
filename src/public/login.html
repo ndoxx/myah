@@ -27,15 +27,5 @@
                 <span class="forgot_password">Forgot password? Too bad.</span>
             </div>
         </div>
-
-        <script>
-            $(function () {
-                // Check if we have a token saved in cookie and attempt automatic login
-                const token = Cookies.get('auth_token');
-                const username = Cookies.get('username');
-                if(token && username)
-                    window.location.replace('/chat');
-            });
-        </script>
     </body>
 </html>

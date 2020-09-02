@@ -67,7 +67,23 @@ app.use('/static', (req, res, next) => {
 });
 app.use('/static', express.static(path.join(__dirname, '../public')));
 app.use('/share', express.static(path.join(__dirname, 'share')));
-app.get('/', (req, res) => { serveLoginPage(res); });
+app.get('/', (req, res) => {
+    // If user already has a token, redirect to chat
+    const token = req.cookies['auth_token'];
+    const username = req.cookies['username'];
+
+    if(token && username)
+    {
+        const decoded = Auth.verifyAuthenticationToken(token);
+        if(decoded && decoded.logged_in_as === username)
+        {
+            res.redirect('/chat');
+            return;
+        }
+    }
+
+    serveLoginPage(res);
+});
 
 app.post('/login', (req, res) => {
     const username = req.body.username;
