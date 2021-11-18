@@ -13,6 +13,6 @@ ssh-keygen -t rsa -b 4096 -m PEM -f jwtRS256.key -q -N ""
 openssl rsa -in jwtRS256.key -pubout -outform PEM -out jwtRS256.key.pub
 
 # Generate certificate for HTTPS
-openssl genrsa -out privatekey.pem 1024
+openssl genrsa -out privatekey.pem 2048
 openssl req -new -key privatekey.pem -out certrequest.csr
 openssl x509 -req -in certrequest.csr -signkey privatekey.pem -out certificate.pem

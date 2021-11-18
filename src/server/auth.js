@@ -8,6 +8,7 @@ const {v4 : uuidv4} = require('uuid');
 
 const PASSWORD_HASH_SALT_ROUNDS = 10;
 const PRIVATE_JWT_RSA_KEY_PATH = 'data/key/jwtRS256.key';
+const PUBLIC_JWT_RSA_KEY_PATH = 'data/key/jwtRS256.key.pub';
 
 module.exports = class AuthenticationSystem
 {
@@ -119,10 +120,10 @@ module.exports = class AuthenticationSystem
 
     verifyAuthenticationToken(token)
     {
-        const private_key = fs.readFileSync(PRIVATE_JWT_RSA_KEY_PATH);
+        const public_key = fs.readFileSync(PUBLIC_JWT_RSA_KEY_PATH);
         try
         {
-            const decoded = jwt.verify(token, private_key, {algorithms : 'RS256'});
+            const decoded = jwt.verify(token, public_key, {algorithms : 'RS256'});
             return decoded;
         }
         catch(err)
