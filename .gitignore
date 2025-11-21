@@ -1,0 +1,9 @@
+NOTES.md
+myah.sublime-workspace
+package-lock.json
+node_modules/
+src/nuclear.js
+src/server/data/db/*
+src/server/data/key/*
+src/server/share/*
+dist/

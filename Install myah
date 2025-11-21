@@ -1,0 +1,42 @@
+Réinstallation de Myah sur un nouveau système.
+
+Installer les deps
+
+```sh
+sudo apt-get install nodejs npm
+```
+
+Cloner le repo git
+
+```sh
+cd ~/git
+git clone https://github.com/ndoxx/myah.git
+```
+
+Installer les deps internes
+
+```sh
+cd myah
+npm install
+npm audit fix
+```
+
+Exécuter le script scripts/init.sh depuis la racine et suivre les instructions.
+
+```sh
+scripts/init.sh
+```
+
+Créer un dossier ~/bin et l'ajouter au path, puis y créer un dossier myah et ajouter un fichier server.sh avec le contenu suivant :
+
+```sh
+#!/bin/sh
+export NODE_ENV=production
+export VERBOSITY=verbose
+export PORT=8080
+cd /home/ndx/dev/myah/src/server
+node server.js > /home/ndx/bin/myah/server.log
+```
+
+Configurer un démarrage automatique avec Startup Applications, qui pointe vers le script précédent.
+
